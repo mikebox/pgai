@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ABC Credit Loan Assistant</title>
+<style>
+  :root {
+    --bg:#f6f5f1; --surface:#ffffff; --text:#1f1e1b; --muted:#77736a; --line:#e3e0d8;
+    --accent:#c96442; --accent-soft:#f6e6df; --bot:#efede7; --user:#2b2a27; --user-text:#fff;
+    --err:#b3261e; --err-soft:#fbe9e7; --ok:#3c7a4a; --warn:#fff3d6;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#1a1915; --surface:#262521; --text:#ecebe6; --muted:#a19d93; --line:#3a3833;
+      --accent:#e08060; --accent-soft:#3b2a23; --bot:#2f2d29; --user:#ecebe6; --user-text:#1a1915;
+      --err:#ff8a80; --err-soft:#3d2321; --ok:#7cc48c; --warn:#3a3218;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#1a1915; --surface:#262521; --text:#ecebe6; --muted:#a19d93; --line:#3a3833;
+    --accent:#e08060; --accent-soft:#3b2a23; --bot:#2f2d29; --user:#ecebe6; --user-text:#1a1915;
+    --err:#ff8a80; --err-soft:#3d2321; --ok:#7cc48c; --warn:#3a3218;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width:720px; margin:0 auto; height:100dvh; display:flex; flex-direction:column; padding:16px; }
+  header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; }
+  h1 { font-size:17px; margin:0; font-weight:600; }
+  h1 span { color:var(--accent); }
+  button { font:inherit; cursor:pointer; border-radius:8px; }
+  .btn { border:0; padding:8px 16px; background:var(--accent); color:#fff; font-weight:500; }
+  .btn.ghost { background:transparent; color:var(--text); border:1px solid var(--line); }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .progress { display:flex; gap:6px; margin-bottom:6px; }
+  .progress i { flex:1; height:4px; border-radius:2px; background:var(--line); transition:background .3s; }
+  .progress i.on { background:var(--accent); }
+  .meta { font:12px var(--mono); color:var(--muted); margin-bottom:8px; }
+  .warn { background:var(--warn); padding:6px 10px; border-radius:8px; font-size:13px; margin-bottom:8px; display:none; }
+  #log { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding:4px 2px 12px; }
+  .msg { max-width:85%; padding:10px 14px; border-radius:14px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .bot { background:var(--bot); align-self:flex-start; border-bottom-left-radius:4px; }
+  .user { background:var(--user); color:var(--user-text); align-self:flex-end; border-bottom-right-radius:4px; }
+  .typing { color:var(--muted); font-style:italic; }
+
+  /* ---- question card (Claude Code style) ---- */
+  .card { align-self:stretch; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent);
+          border-radius:10px; padding:14px 16px 16px; }
+  .card-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .chip { font:600 12px var(--mono); background:var(--accent-soft); color:var(--accent); padding:2px 8px; border-radius:4px; }
+  .step { font:12px var(--mono); color:var(--muted); }
+  .q { margin:0 0 14px; }
+  .q:last-of-type { margin-bottom:16px; }
+  .q-title { font-weight:600; margin-bottom:6px; }
+  .q-error { color:var(--err); font-size:13px; margin-top:4px; }
+  .q.has-error .field-box { border-color:var(--err); background:var(--err-soft); }
+  .field-box { display:flex; align-items:center; border:1px solid var(--line); border-radius:8px; background:var(--bg); }
+  .field-box:focus-within { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+  .field-box .pre { padding-left:12px; color:var(--muted); font-family:var(--mono); }
+  .field-box input { flex:1; min-width:0; font:inherit; padding:9px 12px; border:0; background:transparent; color:var(--text); outline:none; }
+  .opts { display:flex; flex-direction:column; gap:2px; outline:none; }
+  .opt { display:grid; grid-template-columns:18px 24px 1fr; align-items:baseline; text-align:left; width:100%;
+         padding:6px 8px; border:1px solid transparent; background:transparent; color:var(--text); border-radius:6px; }
+  .opt .ptr { color:var(--accent); font-family:var(--mono); visibility:hidden; }
+  .opt .num { font-family:var(--mono); color:var(--muted); }
+  .opt .lab { font-weight:500; }
+  .opt { padding:4px 8px; }
+  .opt .hint { font-size:13px; color:var(--muted); font-weight:400; margin-left:8px; }
+  @media (max-width:520px) { .opt .hint { display:block; margin-left:0; } }
+  .opt:hover, .opt.focus { background:var(--bot); }
+  .opt.focus .ptr { visibility:visible; }
+  .opt.sel { border-color:var(--accent); background:var(--accent-soft); }
+  .opt.sel .lab, .opt.sel .num { color:var(--accent); }
+  .opt.sel .ptr { visibility:visible; }
+  .q.has-error .opts { outline:1px solid var(--err); border-radius:6px; }
+  .other-input { margin:4px 0 0 42px; display:none; }
+  .other-input.show { display:flex; }
+  .card-foot { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .kbd { font:12px var(--mono); color:var(--muted); }
+  .review { display:grid; grid-template-columns:auto 1fr; gap:6px 18px; margin:0 0 16px; }
+  .review dt { color:var(--muted); }
+  .review dd { margin:0; font-weight:500; overflow-wrap:anywhere; }
+  .card.done { border-left-color:var(--ok); padding:8px 14px; opacity:.8; }
+  .card.done .card-head { margin:0; }
+  .card.done .body { display:none; }
+  .card.done .chip { background:transparent; color:var(--ok); padding:0; }
+
+  form.chat { display:flex; gap:8px; margin-top:8px; }
+  form.chat input { flex:1; min-width:0; font:inherit; padding:10px 12px; border-radius:8px; border:1px solid var(--line);
+                    background:var(--surface); color:var(--text); }
+  @media (max-width:520px) {
+    .wrap { padding:12px 16px; }
+    h1 { font-size:15px; }
+    #restart { padding:6px 10px; font-size:13px; white-space:nowrap; }
+    .msg { max-width:92%; }
+    .kbd { display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span>✻</span> ABC Credit Loan Assistant</h1>
+    <button class="btn ghost" id="restart">New application</button>
+  </header>
+  <div class="progress" id="progress"></div>
+  <div class="meta" id="meta"></div>
+  <div class="warn" id="warn">⚠️ Placeholder ML model in use – decisions are not real.</div>
+  <div id="log" aria-live="polite"></div>
+  <form class="chat" id="chat">
+    <input id="input" autocomplete="off" placeholder="Or type your answers / ask a question…">
+    <button class="btn" id="send">Send</button>
+  </form>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const h = (tag, attrs = {}, ...kids) => {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') el.className = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (v !== undefined && v !== null && v !== false) el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const kid of kids.flat()) if (kid !== null && kid !== undefined) el.append(kid);
+  return el;
+};
+let sid = null, busy = false;
+
+function esc(s) { return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function md(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|\s)_(.+?)_(?=\s|$)/g, '$1<i>$2</i>'); }
+function scroll() { $('log').scrollTop = $('log').scrollHeight; }
+
+function bubble(role, text) {
+  const d = h('div', { class: 'msg ' + role });
+  d.innerHTML = role === 'bot' ? md(text) : esc(text);
+  $('log').append(d); scroll();
+  return d;
+}
+
+/* ---------- question card ---------- */
+function choiceField(f, q) {
+  const opts = f.allow_other ? [...f.options, { value: '__other', label: 'Other…', hint: '' }] : f.options;
+  const known = f.options.some(o => o.value === f.value);
+  let selected = f.value ? (known ? f.value : '__other') : null;
+  const otherBox = h('div', { class: 'field-box other-input' + (selected === '__other' ? ' show' : '') },
+    h('input', { type: 'text', placeholder: 'Describe…', value: known ? '' : (f.value || '') }));
+  const otherInput = otherBox.querySelector('input');
+  const list = h('div', { class: 'opts', role: 'radiogroup', tabindex: 0, 'aria-label': f.question });
+  const rows = opts.map((o, i) => h('button', {
+      type: 'button', class: 'opt', role: 'radio', tabindex: -1, 'data-v': o.value,
+      onclick: () => pick(o.value, true) },
+    h('span', { class: 'ptr' }, '❯'), h('span', { class: 'num' }, `${i + 1}.`),
+    h('span', { class: 'lab' }, o.label, o.hint ? h('span', { class: 'hint' }, o.hint) : null)));
+  list.append(...rows);
+  let focusIdx = Math.max(0, opts.findIndex(o => o.value === selected));
+  function paint() {
+    rows.forEach((r, i) => {
+      r.classList.toggle('sel', r.dataset.v === selected);
+      r.classList.toggle('focus', i === focusIdx && list.contains(document.activeElement));
+      r.setAttribute('aria-checked', r.dataset.v === selected);
+    });
+    otherBox.classList.toggle('show', selected === '__other');
+  }
+  function pick(v, advance) {
+    selected = v; focusIdx = opts.findIndex(o => o.value === v);
+    q.classList.remove('has-error'); paint();
+    if (v === '__other') otherInput.focus();
+    else if (advance) q.dispatchEvent(new CustomEvent('answered', { bubbles: true }));
+  }
+  list.addEventListener('focus', paint); list.addEventListener('blur', paint);
+  list.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); focusIdx = (focusIdx + (e.key === 'ArrowDown' ? 1 : -1) + opts.length) % opts.length; paint();
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); pick(opts[focusIdx].value, true);
+    } else if (/^[1-9]$/.test(e.key) && +e.key <= opts.length) {
+      e.preventDefault(); pick(opts[+e.key - 1].value, true);
+    }
+  });
+  otherInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); q.dispatchEvent(new CustomEvent('answered', { bubbles: true })); } });
+  q.append(list, otherBox);
+  q.focusTarget = list;
+  q.getValue = () => selected === '__other' ? otherInput.value.trim() : selected;
+  paint();
+}
+
+function textField(f, q) {
+  const listId = f.suggestions ? 'dl-' + f.name + '-' + Math.random().toString(36).slice(2, 7) : null;
+  const input = h('input', {
+    type: 'text', name: f.name, placeholder: f.placeholder || '', value: f.value ?? '',
+    inputmode: f.kind === 'number' ? 'numeric' : (f.kind === 'money' ? 'decimal' : null),
+    list: listId, autocomplete: 'off',
+    onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); q.dispatchEvent(new CustomEvent('answered', { bubbles: true })); } },
+    oninput: () => q.classList.remove('has-error') });
+  const box = h('div', { class: 'field-box' }, f.kind === 'money' ? h('span', { class: 'pre' }, '₹') : null, input);
+  q.append(box);
+  if (listId) q.append(h('datalist', { id: listId }, f.suggestions.map(s => h('option', { value: s }))));
+  q.focusTarget = input;
+  q.getValue = () => input.value.trim();
+}
+
+function questionCard(form) {
+  const card = h('div', { class: 'card', 'data-type': form.type });
+  const chip = h('span', { class: 'chip' }, form.title);
+  const head = h('div', { class: 'card-head' }, chip, h('span', { class: 'step' }, `Step ${form.step} of ${form.steps}`));
+  const body = h('div', { class: 'body' });
+  card.append(head, body);
+
+  let current = { qs: [], go: null };
+  body.addEventListener('answered', e => {      // move to the next unanswered question, then the button
+    const i = current.qs.indexOf(e.target.closest('.q'));
+    const next = current.qs.slice(i + 1).find(q => !q.getValue()) || null;
+    if (next) next.focusTarget.focus(); else current.go.focus();
+  });
+  if (form.type === 'review') renderReview(); else renderQuestions(form.fields, 'Continue →');
+  return card;
+
+  function renderReview() {
+    body.replaceChildren(
+      h('dl', { class: 'review' }, form.fields.flatMap(f => [h('dt', {}, cap(f.label)), h('dd', {}, f.display)])),
+      h('div', { class: 'card-foot' },
+        h('button', { type: 'button', class: 'btn', onclick: () => submitAction(card) }, 'Submit application'),
+        h('button', { type: 'button', class: 'btn ghost', onclick: () => renderQuestions(form.fields, 'Save changes') }, 'Edit')));
+    body.querySelector('.btn').focus();
+  }
+
+  function renderQuestions(fields, cta) {
+    const qs = fields.map(f => {
+      const q = h('div', { class: 'q' + (f.error ? ' has-error' : ''), 'data-name': f.name },
+        h('div', { class: 'q-title' }, f.question));
+      if (f.kind === 'choice') choiceField(f, q); else textField(f, q);
+      if (f.error) q.append(h('div', { class: 'q-error' }, f.error));
+      q.field = f;
+      return q;
+    });
+    const go = h('button', { type: 'button', class: 'btn', onclick: () => submitForm(card, qs) }, cta);
+    const foot = h('div', { class: 'card-foot' }, go,
+      h('span', { class: 'kbd' }, '↑↓ choose · 1-9 pick · ⏎ next'),
+      form.type === 'review' ? h('button', { type: 'button', class: 'btn ghost', onclick: renderReview }, 'Cancel') : null);
+    body.replaceChildren(...qs, foot);
+    current = { qs, go };
+    setTimeout(() => (qs.find(q => q.classList.contains('has-error') || !q.getValue()) || qs[0]).focusTarget.focus(), 0);
+  }
+}
+
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+function closeCards() {
+  document.querySelectorAll('.card:not(.done)').forEach(c => {
+    c.classList.add('done');
+    c.querySelector('.chip').textContent = '✓ ' + c.querySelector('.chip').textContent;
+    c.querySelectorAll('input,button').forEach(x => x.disabled = true);
+  });
+}
+
+/* ---------- server calls ---------- */
+async function post(path, body) {
+  const res = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body || {}) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function show(r) {
+  bubble('bot', r.message.content);
+  if (r.message.form) $('log').append(questionCard(r.message.form));
+  status(r); scroll();
+}
+
+function status(r) {
+  $('progress').replaceChildren(...Array.from({ length: r.steps }, (_, i) => h('i', { class: i < r.steps_done ? 'on' : '' })));
+  $('meta').textContent = r.stage === 'done' ? 'Application complete' : `${r.collected} of ${r.total} details`;
+  $('warn').style.display = r.placeholder ? 'block' : 'none';
+  const done = r.stage === 'done';
+  $('input').disabled = $('send').disabled = done;
+}
+
+async function exchange(payload, userText) {
+  if (busy) return;
+  busy = true;
+  closeCards();
+  bubble('user', userText);
+  const t = bubble('bot', 'typing…'); t.classList.add('typing');
+  try {
+    const r = await post('/api/message', { session_id: sid, ...payload });
+    t.remove(); show(r);
+  } catch (err) {
+    t.remove(); bubble('bot', 'Sorry, something went wrong: ' + err.message);
+  } finally { busy = false; }
+}
+
+function submitForm(card, qs) {
+  let missing = null;
+  const values = {}, shown = [];
+  for (const q of qs) {
+    const v = q.getValue();
+    if (!v) { q.classList.add('has-error'); missing = missing || q; continue; }
+    values[q.field.name] = v;
+    const opt = (q.field.options || []).find(o => o.value === v);
+    shown.push(`${cap(q.field.label)}: ${q.field.kind === 'money' ? '₹' : ''}${opt ? opt.label : v}`);
+  }
+  if (missing) { missing.focusTarget.focus(); return; }
+  exchange({ form: values }, shown.join('\n'));
+}
+
+function submitAction() { exchange({ action: 'submit' }, 'Submit application'); }
+
+$('chat').addEventListener('submit', e => {
+  e.preventDefault();
+  const text = $('input').value.trim();
+  if (!text) return;
+  $('input').value = '';
+  exchange({ text }, text);
+});
+
+async function start() {
+  $('log').replaceChildren();
+  const r = await post('/api/session');
+  sid = r.session_id;
+  show(r);
+}
+$('restart').addEventListener('click', () => start());
+start().catch(err => bubble('bot', 'Could not start: ' + err.message));
+</script>
+</body>
+</html>

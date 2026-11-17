@@ -1,0 +1,20 @@
+Feature,Created from,Formula / method,Why it helps,Kept?
+Loan_to_Income,"Loan_Amount, Net_salary",Loan ÷ monthly salary (NaN if salary ≤ 0),Affordability: months of salary borrowed,No: identical ranking to EMI_to_Income (ρ = 1)
+Vehicle_Price,"Loan_Amount, LTV",Loan ÷ (LTV/100),Price of bike relative to profile,Yes
+Down_Payment,"Vehicle_Price, Loan_Amount",Price − Loan (≥ 0),Customer's own money in the deal; strongest single risk signal,Yes
+Approx_EMI,Loan_Amount,"Reducing-balance EMI, 24 months @ 22% p.a.",Monthly obligation,No: equals Loan_Amount × constant (ρ = 1)
+EMI_to_Income,"Approx_EMI, Net_salary",EMI ÷ salary,FOIR-style repayment burden,No: depends on a question not asked (Net_salary)
+Residual_Income,"Net_salary, Approx_EMI",Salary − EMI,Money left to live on,No: depends on a question not asked (Net_salary)
+Down_Payment_to_Income,"Down_Payment, Net_salary",Down payment ÷ salary,Savings capacity,No: depends on a question not asked (Net_salary)
+Age_Band,Age,18-25 / 26-35 / 36-45 / 46-60 / 60+,Non-linear age effect for LogReg,Yes
+Is_First_Time_Borrower,PAST_LOANS_ACTIVE,1 if NO_PAST_LOANS,Thin credit file,Yes
+High_LTV,LTV,1 if LTV ≥ 90%,Near-zero down payment red flag,Yes
+Is_Stable_Income,Employment_Type,1 if SAL / PEN,Income stability,No: regrouping of one-hot Employment_Type
+Owns_Home,Resident_Type,1 if owned,Residential stability,No: regrouping of one-hot Resident_Type
+Is_EV,Product_Code,1 if EB,EV segment,No: regrouping of Product_Code
+tier_rank,Final_Tier / Pincode,Tier number 1-7; blanks from same 3-digit pincode,"City size, ordinal",Yes
+pin_district,Pincode,First 3 digits; one-hot with min_frequency=30 (beat target encoding and full pincode in Step 4),Local risk without 13k sparse codes,Yes
+pin_zone,Pincode,"First digit, one-hot",Broad region,Yes
+age_above_policy,Age,1 if Age > 60,Outside 18-60 policy,Yes
+salary_invalid / is_non_earner,"Net_salary, Employment_Type",Typo salary / student or non-earner,Data-quality and income-type signals,"No: depends on a question not asked (Employment_Type, Net_salary)"
+ltv_invalid / tier_imputed,LTV / Final_Tier,1 if value was rebuilt,Data-quality signals,Yes

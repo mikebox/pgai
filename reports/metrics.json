@@ -1,0 +1,84 @@
+{
+  "internal_test_ranking": {
+    "ROC-AUC": 0.7858,
+    "PR-AUC": 0.1835,
+    "Brier": 0.0463,
+    "PR-AUC of random model": 0.0526
+  },
+  "internal_test_at_threshold": {
+    "threshold": 0.09,
+    "accuracy": 0.8243,
+    "precision_DECLINED": 0.1509,
+    "recall_DECLINED": 0.5061,
+    "f1_DECLINED": 0.2325,
+    "precision_APPROVED": 0.9685,
+    "recall_APPROVED": 0.842,
+    "f1_APPROVED": 0.9008,
+    "balanced_accuracy": 0.6741,
+    "decline_rate": 0.1763
+  },
+  "internal_test_confusion_matrix": {
+    "labels": [
+      "APPROVED",
+      "DECLINED"
+    ],
+    "matrix": [
+      [
+        17296,
+        3246
+      ],
+      [
+        563,
+        577
+      ]
+    ]
+  },
+  "cv5_train": [
+    {
+      "model": "Baseline: always APPROVE",
+      "ROC-AUC": 0.5,
+      "ROC-AUC sd": 0.0,
+      "PR-AUC": 0.0526,
+      "Brier": 0.0526,
+      "fit s/fold": 0.0236
+    },
+    {
+      "model": "Logistic regression (one-hot + target enc.)",
+      "ROC-AUC": 0.7804,
+      "ROC-AUC sd": 0.0074,
+      "PR-AUC": 0.1749,
+      "Brier": 0.0465,
+      "fit s/fold": 2.1511
+    },
+    {
+      "model": "Logistic regression, class_weight=balanced",
+      "ROC-AUC": 0.7794,
+      "ROC-AUC sd": 0.0069,
+      "PR-AUC": 0.1703,
+      "Brier": 0.1981,
+      "fit s/fold": 2.1457
+    },
+    {
+      "model": "HistGradientBoosting (default params)",
+      "ROC-AUC": 0.7816,
+      "ROC-AUC sd": 0.0074,
+      "PR-AUC": 0.1755,
+      "Brier": 0.0465,
+      "fit s/fold": 4.4595
+    },
+    {
+      "model": "HistGradientBoosting (tuned)",
+      "ROC-AUC": 0.7843,
+      "ROC-AUC sd": 0.0071,
+      "PR-AUC": 0.1787,
+      "Brier": NaN,
+      "fit s/fold": 6.2692
+    }
+  ],
+  "latency_ms": {
+    "p50_ms": 71.81,
+    "p95_ms": 118.65,
+    "p99_ms": 220.07,
+    "max_ms": 327.15
+  }
+}

@@ -1,0 +1,29 @@
+{
+ "train rows": 86727,
+ "val rows": 21682,
+ "model": "lgbm",
+ "imbalance strategy": "balanced",
+ "vehicle encoding": "A: Product + Make + Variant (one-hot)",
+ "location encoding": "pin_district one-hot (min_freq=30)",
+ "customer questions kept": [
+  "Age",
+  "Pincode",
+  "PAST_LOANS_ACTIVE"
+ ],
+ "removed": [
+  "Gender",
+  "Net_salary",
+  "Resident_Type",
+  "Qualifications",
+  "Employment_Type"
+ ],
+ "final val ROC-AUC": 0.7858,
+ "final val PR-AUC": 0.1832,
+ "final val recall": 0.6044,
+ "final val precision": 0.1362,
+ "final % declined": 0.2333,
+ "threshold": 0.5756,
+ "all-questions CV AUC": 0.7813,
+ "final model columns": 415,
+ "latency median ms": 15.1
+}

@@ -35,5 +35,9 @@ TRAINED_MODEL_PATH = PROJECT_ROOT / "models" / "loan_decision_model.joblib"
 DECISION_THRESHOLD_OVERRIDE = float(os.environ["DECISION_THRESHOLD"]) if os.getenv("DECISION_THRESHOLD") else None
 DECISION_THRESHOLD = DECISION_THRESHOLD_OVERRIDE if DECISION_THRESHOLD_OVERRIDE is not None else 0.5
 
+# ---- Real-time decisioning ---------------------------------------------------
+# Y: the decision must come back within this many seconds of the final input (the submit).
+DECISION_SLA_S = float(os.getenv("DECISION_SLA_S", "1.0"))
+
 # ---- Audit log ---------------------------------------------------------------
 AUDIT_LOG = Path(os.getenv("CHAT_AUDIT_LOG", PROJECT_ROOT / "logs" / "chat_audit.jsonl"))

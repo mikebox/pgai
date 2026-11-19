@@ -3,116 +3,299 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>ABC Credit Loan Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..650&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..600;1,8..60,400&display=swap">
 <style>
   :root {
-    --bg:#f6f5f1; --surface:#ffffff; --text:#1f1e1b; --muted:#77736a; --line:#e3e0d8;
-    --accent:#c96442; --accent-soft:#f6e6df; --bot:#efede7; --user:#2b2a27; --user-text:#fff;
-    --err:#b3261e; --err-soft:#fbe9e7; --ok:#3c7a4a; --warn:#fff3d6;
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --subtle: #f7f7f5;
+    --hover: #f3f2ee;
+    --text: #1a1a18;
+    --text-2: #5f5e5a;
+    --text-3: #8f8d87;
+    --line: #e8e6e1;
+    --line-strong: #d6d3cc;
+    --accent: #c96442;
+    --accent-hover: #b4573a;
+    --accent-soft: #fbf1ec;
+    --err: #b42318;
+    --err-soft: #fef3f2;
+    --ok: #2f7d4f;
+    --ok-soft: #eef7f1;
+    --shadow: 0 1px 2px rgba(20, 20, 15, .04), 0 4px 16px rgba(20, 20, 15, .05);
+    --shadow-lg: 0 2px 6px rgba(20, 20, 15, .04), 0 12px 32px rgba(20, 20, 15, .08);
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --serif: "Source Serif 4", "Iowan Old Style", Charter, Georgia, serif;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg:#1a1915; --surface:#262521; --text:#ecebe6; --muted:#a19d93; --line:#3a3833;
-      --accent:#e08060; --accent-soft:#3b2a23; --bot:#2f2d29; --user:#ecebe6; --user-text:#1a1915;
-      --err:#ff8a80; --err-soft:#3d2321; --ok:#7cc48c; --warn:#3a3218;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg:#1a1915; --surface:#262521; --text:#ecebe6; --muted:#a19d93; --line:#3a3833;
-    --accent:#e08060; --accent-soft:#3b2a23; --bot:#2f2d29; --user:#ecebe6; --user-text:#1a1915;
-    --err:#ff8a80; --err-soft:#3d2321; --ok:#7cc48c; --warn:#3a3218;
+    --col: 680px;
   }
   * { box-sizing: border-box; }
-  body { margin:0; font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); }
-  .wrap { max-width:720px; margin:0 auto; height:100dvh; display:flex; flex-direction:column; padding:16px; }
-  header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; }
-  h1 { font-size:17px; margin:0; font-weight:600; }
-  h1 span { color:var(--accent); }
-  button { font:inherit; cursor:pointer; border-radius:8px; }
-  .btn { border:0; padding:8px 16px; background:var(--accent); color:#fff; font-weight:500; }
-  .btn.ghost { background:transparent; color:var(--text); border:1px solid var(--line); }
-  .btn:disabled { opacity:.45; cursor:default; }
-  .progress { display:flex; gap:6px; margin-bottom:6px; }
-  .progress i { flex:1; height:4px; border-radius:2px; background:var(--line); transition:background .3s; }
-  .progress i.on { background:var(--accent); }
-  .meta { font:12px var(--mono); color:var(--muted); margin-bottom:8px; }
-  .warn { background:var(--warn); padding:6px 10px; border-radius:8px; font-size:13px; margin-bottom:8px; display:none; }
-  #log { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding:4px 2px 12px; }
-  .msg { max-width:85%; padding:10px 14px; border-radius:14px; white-space:pre-wrap; overflow-wrap:anywhere; }
-  .bot { background:var(--bot); align-self:flex-start; border-bottom-left-radius:4px; }
-  .user { background:var(--user); color:var(--user-text); align-self:flex-end; border-bottom-right-radius:4px; }
-  .typing { color:var(--muted); font-style:italic; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 var(--sans);
+         font-feature-settings: "cv11", "ss03"; font-optical-sizing: auto; letter-spacing: -.006em;
+         -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; display: flex; flex-direction: column; }
+  button { font: inherit; color: inherit; cursor: pointer; }
 
-  /* ---- question card (Claude Code style) ---- */
-  .card { align-self:stretch; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent);
-          border-radius:10px; padding:14px 16px 16px; }
-  .card-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
-  .chip { font:600 12px var(--mono); background:var(--accent-soft); color:var(--accent); padding:2px 8px; border-radius:4px; }
-  .step { font:12px var(--mono); color:var(--muted); }
-  .q { margin:0 0 14px; }
-  .q:last-of-type { margin-bottom:16px; }
-  .q-title { font-weight:600; margin-bottom:6px; }
-  .q-error { color:var(--err); font-size:13px; margin-top:4px; }
-  .q.has-error .field-box { border-color:var(--err); background:var(--err-soft); }
-  .field-box { display:flex; align-items:center; border:1px solid var(--line); border-radius:8px; background:var(--bg); }
-  .field-box:focus-within { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
-  .field-box .pre { padding-left:12px; color:var(--muted); font-family:var(--mono); }
-  .field-box input { flex:1; min-width:0; font:inherit; padding:9px 12px; border:0; background:transparent; color:var(--text); outline:none; }
-  .opts { display:flex; flex-direction:column; gap:2px; outline:none; }
-  .opt { display:grid; grid-template-columns:18px 24px 1fr; align-items:baseline; text-align:left; width:100%;
-         padding:6px 8px; border:1px solid transparent; background:transparent; color:var(--text); border-radius:6px; }
-  .opt .ptr { color:var(--accent); font-family:var(--mono); visibility:hidden; }
-  .opt .num { font-family:var(--mono); color:var(--muted); }
-  .opt .lab { font-weight:500; }
-  .opt { padding:4px 8px; }
-  .opt .hint { font-size:13px; color:var(--muted); font-weight:400; margin-left:8px; }
-  @media (max-width:520px) { .opt .hint { display:block; margin-left:0; } }
-  .opt:hover, .opt.focus { background:var(--bot); }
-  .opt.focus .ptr { visibility:visible; }
-  .opt.sel { border-color:var(--accent); background:var(--accent-soft); }
-  .opt.sel .lab, .opt.sel .num { color:var(--accent); }
-  .opt.sel .ptr { visibility:visible; }
-  .q.has-error .opts { outline:1px solid var(--err); border-radius:6px; }
-  .other-input { margin:4px 0 0 42px; display:none; }
-  .other-input.show { display:flex; }
-  .card-foot { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-  .kbd { font:12px var(--mono); color:var(--muted); }
-  .review { display:grid; grid-template-columns:auto 1fr; gap:6px 18px; margin:0 0 16px; }
-  .review dt { color:var(--muted); }
-  .review dd { margin:0; font-weight:500; overflow-wrap:anywhere; }
-  .card.done { border-left-color:var(--ok); padding:8px 14px; opacity:.8; }
-  .card.done .card-head { margin:0; }
-  .card.done .body { display:none; }
-  .card.done .chip { background:transparent; color:var(--ok); padding:0; }
+  /* ---- top bar ---- */
+  .top { position: sticky; top: 0; z-index: 2; background: rgba(255,255,255,.9); backdrop-filter: blur(8px);
+         border-bottom: 1px solid transparent; transition: border-color .2s; }
+  .top.scrolled { border-bottom-color: var(--line); }
+  .top-in { max-width: calc(var(--col) + 32px); margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; letter-spacing: -.018em; }
+  .mark { width: 24px; height: 24px; border-radius: 7px; background: var(--accent); color: #fff; display: grid; place-items: center;
+          font: 700 13px/1 var(--sans); letter-spacing: -.04em; }
+  .steps { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--text-3); font-size: 13px; }
+  .dots { display: flex; gap: 4px; }
+  .dots i { width: 18px; height: 4px; border-radius: 2px; background: var(--line); transition: background .3s; }
+  .dots i.on { background: var(--accent); }
+  .new { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface);
+         border-radius: 999px; padding: 5px 12px 5px 10px; font-size: 13px; color: var(--text-2); }
+  .new:hover { background: var(--hover); color: var(--text); }
+  .new svg { width: 14px; height: 14px; }
 
-  form.chat { display:flex; gap:8px; margin-top:8px; }
-  form.chat input { flex:1; min-width:0; font:inherit; padding:10px 12px; border-radius:8px; border:1px solid var(--line);
-                    background:var(--surface); color:var(--text); }
-  @media (max-width:520px) {
-    .wrap { padding:12px 16px; }
-    h1 { font-size:15px; }
-    #restart { padding:6px 10px; font-size:13px; white-space:nowrap; }
-    .msg { max-width:92%; }
-    .kbd { display:none; }
+  /* ---- conversation ---- */
+  main { flex: 1; }
+  #log { max-width: calc(var(--col) + 32px); margin: 0 auto; padding: 24px 16px 24px; display: flex; flex-direction: column; gap: 20px; }
+  .notice { align-self: center; font-size: 12.5px; color: #8a5a00; background: #fff8e6; border: 1px solid #f5e3b3;
+            border-radius: 999px; padding: 4px 12px; }
+  .bot { font: 400 17.5px/1.62 var(--serif); letter-spacing: -.003em; color: #22221f; font-optical-sizing: auto; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
+  .bot b { font-weight: 600; }
+  .user { font-size: 15px; letter-spacing: -.008em; align-self: flex-end; max-width: 80%; background: var(--subtle); border: 1px solid var(--line);
+          border-radius: 18px 18px 4px 18px; padding: 10px 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .typing { display: flex; gap: 5px; padding: 8px 0; }
+  .typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); animation: blink 1.2s infinite both; }
+  .typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
+  .fade-in { animation: fade .25s ease-out both; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* ---- form card ---- */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow);
+          padding: 20px 20px 18px; }
+  .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  .card-title { font-size: 16.5px; font-weight: 600; letter-spacing: -.02em; }
+  .card-step { font-size: 12.5px; color: var(--text-3); }
+  .q + .q { margin-top: 20px; }
+  .q-title { font-size: 14.5px; font-weight: 520; letter-spacing: -.01em; color: var(--text); margin-bottom: 8px; }
+  .q-error { color: var(--err); font-size: 13px; margin-top: 6px; display: flex; gap: 6px; align-items: flex-start; }
+  .q-error::before { content: "!"; flex: none; width: 16px; height: 16px; border-radius: 50%; background: var(--err); color: #fff;
+                     font: 650 11px/16px var(--sans); text-align: center; margin-top: 1px; }
+  .field { display: flex; align-items: center; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface);
+           transition: border-color .15s, box-shadow .15s; }
+  .field:hover { border-color: #c4c0b7; }
+  .field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .field .pre { padding-left: 12px; color: var(--text-3); }
+  .field input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 10px 12px; border: 0; background: transparent;
+                 color: var(--text); outline: none; }
+  .field input::placeholder { color: var(--text-3); }
+  .q-note { font-size: 12.5px; color: var(--text-3); margin-top: 6px; }
+  .q-note b { color: var(--accent); font-weight: 600; }
+  .slider { margin-top: 12px; }
+  .slider-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--text-2); margin-bottom: 6px; }
+  .slider-top b { font-size: 15px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .slider input[type=range] { width: 100%; height: 22px; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+  .slider input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px;
+    background: linear-gradient(to right, var(--accent) 0 var(--fill, 80%), var(--line) var(--fill, 80%) 100%); }
+  .slider input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--line); }
+  .slider input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--accent); }
+  .slider input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%;
+    background: #fff; border: 2px solid var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .slider input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); }
+  .slider input[type=range]:focus-visible { outline: none; }
+  .slider input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--accent-soft); }
+  .slider input[type=range]:disabled { opacity: .4; cursor: default; }
+  .slider-ends { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .q.has-error .field { border-color: var(--err); background: var(--err-soft); }
+  .q.has-error .field:focus-within { box-shadow: 0 0 0 3px var(--err-soft); }
+
+  .opts { display: grid; gap: 6px; outline: none; }
+  .opts.cols-2 { grid-template-columns: 1fr 1fr; }
+  .opt { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--surface);
+         border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; transition: border-color .15s, background .15s; }
+  .opt:hover { background: var(--hover); }
+  .opt .radio { flex: none; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--line-strong);
+                display: grid; place-items: center; transition: border-color .15s; }
+  .opt .radio::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); transform: scale(0);
+                       transition: transform .15s; }
+  .opt .txt { flex: 1; min-width: 0; }
+  .opt .lab { font-size: 14.5px; font-weight: 450; letter-spacing: -.01em; }
+  .opt .hint { display: block; font-size: 12.5px; color: var(--text-3); line-height: 1.35; }
+  .opt .key { flex: none; font: 11px/1 var(--mono); color: var(--text-3); border: 1px solid var(--line);
+              border-radius: 4px; padding: 3px 5px; opacity: 0; transition: opacity .15s; }
+  .opts:focus-within .key, .opt:hover .key { opacity: 1; }
+  .opt.focus { border-color: var(--line-strong); background: var(--hover); }
+  .opt.sel { border-color: var(--accent); background: var(--accent-soft); }
+  .opt.sel .radio { border-color: var(--accent); }
+  .opt.sel .radio::after { transform: scale(1); }
+  .q.has-error .opt { border-color: #f1b8b2; }
+  .other { margin-top: 6px; display: none; }
+  .other.show { display: flex; }
+
+  .card-foot { display: flex; align-items: center; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+  .btn { border: 0; border-radius: 10px; padding: 9px 16px; font-weight: 550; font-size: 14px; letter-spacing: -.01em; background: var(--text); color: #fff;
+         transition: background .15s, opacity .15s; }
+  .btn:hover { background: #33322e; }
+  .btn.primary { background: var(--accent); }
+  .btn.primary:hover { background: var(--accent-hover); }
+  .btn.ghost { background: transparent; color: var(--text-2); border: 1px solid var(--line); }
+  .btn.ghost:hover { background: var(--hover); color: var(--text); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .hint-keys { font-size: 12px; color: var(--text-3); margin-left: auto; }
+  .hint-keys kbd { font: 11px var(--mono); border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; }
+
+  .review { margin: 0; }
+  .review div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .review div:first-child { border-top: 0; padding-top: 0; }
+  .review dt { color: var(--text-2); font-size: 14px; }
+  .review dd { margin: 0; font-weight: 550; font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+
+  .card.done { box-shadow: none; padding: 10px 14px; border-radius: 12px; background: var(--subtle); }
+  .card.done .card-head { margin: 0; }
+  .card.done .card-title { font-size: 13.5px; font-weight: 500; color: var(--text-2); display: flex; align-items: center; gap: 8px; }
+  .card.done .card-title::before { content: ""; width: 16px; height: 16px; border-radius: 50%; background: var(--ok-soft)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8.2l2.2 2.2 4.8-4.8' fill='none' stroke='%232f7d4f' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat; }
+  .card.done .body { display: none; }
+
+  .result { border-radius: 16px; padding: 18px 20px; border: 1px solid var(--line); display: flex; gap: 14px; align-items: flex-start; }
+  .result.ok { background: var(--ok-soft); border-color: #cfe8d8; }
+  .result.no { background: var(--subtle); }
+  .result .icon { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; }
+  .result.ok .icon { background: var(--ok); color: #fff; }
+  .result.no .icon { background: var(--line); color: var(--text-2); }
+  .timing { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(20,20,15,.08); font: 13px/1.4 var(--sans); color: var(--text-2); }
+  .timing div { display: flex; flex-direction: column; }
+  .timing b { font-size: 15px; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .timing .ok { color: var(--ok); } .timing .over { color: var(--err); }
+  .result h2 { margin: 2px 0 6px; font: 600 19px/1.3 var(--serif); letter-spacing: -.01em; }
+  .result .label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); margin-bottom: 4px; }
+  .result p { margin: 0; color: var(--text-2); font-size: 14.5px; }
+  .card.done .card-step { display: none; }
+  .result p + p { margin-top: 8px; }
+  .result small { display: block; margin-top: 10px; color: #8a5a00; font-size: 12.5px; }
+
+  /* ---- composer ---- */
+  .composer-wrap { position: sticky; bottom: 0; background: linear-gradient(to bottom, rgba(255,255,255,0), #fff 28%); padding: 12px 16px 16px; }
+  .composer { max-width: var(--col); margin: 0 auto; display: flex; align-items: flex-end; gap: 8px; background: var(--surface);
+              border: 1px solid var(--line-strong); border-radius: 22px; padding: 8px 8px 8px 16px; box-shadow: var(--shadow-lg);
+              transition: border-color .15s; }
+  .composer:focus-within { border-color: #c4c0b7; }
+  .composer textarea { flex: 1; min-width: 0; resize: none; border: 0; outline: none; background: transparent; font: inherit;
+                       font-size: 15px; line-height: 1.5; padding: 6px 0; max-height: 140px; color: var(--text); }
+  .composer textarea::placeholder { color: var(--text-3); }
+  .send { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; display: grid; place-items: center;
+          background: var(--accent); color: #fff; transition: background .15s, opacity .15s; }
+  .send:hover { background: var(--accent-hover); }
+  .send:disabled { background: var(--line); color: var(--text-3); cursor: default; }
+  .send svg { width: 16px; height: 16px; }
+  .foot-note { max-width: var(--col); margin: 8px auto 0; text-align: center; font-size: 11.5px; color: var(--text-3); }
+
+  /* ---- landing ---- */
+  .landing { flex: 1; display: none; align-items: center; justify-content: center; padding: 32px 16px 48px; }
+  body.on-landing .landing { display: flex; }
+  body.on-landing main, body.on-landing .composer-wrap, body.on-landing .steps, body.on-landing #restart { display: none; }
+  .hero { max-width: 640px; width: 100%; text-align: center; animation: fade .4s ease-out both; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--accent);
+             background: var(--accent-soft); border-radius: 999px; padding: 4px 12px; margin-bottom: 20px; }
+  .hero h1 { font: 500 clamp(30px, 5.4vw, 44px)/1.12 var(--serif); letter-spacing: -.022em; margin: 0 0 14px; color: var(--text); }
+  .hero .sub { font-size: 16.5px; color: var(--text-2); margin: 0 auto 30px; max-width: 460px; }
+  .cta { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 999px; padding: 13px 26px;
+         background: var(--accent); color: #fff; font-size: 15.5px; font-weight: 550; letter-spacing: -.01em;
+         box-shadow: 0 1px 2px rgba(201,100,66,.25), 0 6px 18px rgba(201,100,66,.22); transition: background .15s, transform .15s, box-shadow .15s; }
+  .cta:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 2px 4px rgba(201,100,66,.25), 0 10px 24px rgba(201,100,66,.25); }
+  .cta:active { transform: none; }
+  .cta:disabled { opacity: .7; cursor: default; transform: none; }
+  .cta svg { width: 16px; height: 16px; transition: transform .15s; }
+  .cta:hover svg { transform: translateX(2px); }
+  .cta-note { font-size: 12.5px; color: var(--text-3); margin-top: 12px; }
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 44px 0 0; text-align: left; }
+  .feature { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: var(--surface); }
+  .feature .ic { width: 30px; height: 30px; border-radius: 9px; background: var(--subtle); color: var(--text-2);
+                 display: grid; place-items: center; margin-bottom: 12px; }
+  .feature .ic svg { width: 16px; height: 16px; }
+  .feature b { display: block; font-size: 14px; font-weight: 600; letter-spacing: -.01em; margin-bottom: 2px; }
+  .feature span { font-size: 13px; color: var(--text-3); line-height: 1.45; }
+  .start-error { color: var(--err); font-size: 13.5px; margin-top: 14px; }
+
+  @media (max-width: 560px) {
+    .features { grid-template-columns: 1fr; gap: 8px; margin-top: 32px; }
+    .feature { display: grid; grid-template-columns: 30px 1fr; column-gap: 12px; padding: 12px 14px; }
+    .feature .ic { grid-row: span 2; margin: 0; }
+    .landing { align-items: flex-start; padding-top: 40px; }
+    .steps .label { display: none; }
+    .new .t { display: none; }
+    .new { padding: 6px; }
+    .card { padding: 16px 14px 14px; border-radius: 14px; }
+    .opts.cols-2 { grid-template-columns: 1fr; }
+    .hint-keys { display: none; }
+    .user { max-width: 88%; }
+    .bot { font-size: 16.5px; }
   }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
-<body>
-<div class="wrap">
-  <header>
-    <h1><span>✻</span> ABC Credit Loan Assistant</h1>
-    <button class="btn ghost" id="restart">New application</button>
-  </header>
-  <div class="progress" id="progress"></div>
-  <div class="meta" id="meta"></div>
-  <div class="warn" id="warn">⚠️ Placeholder ML model in use – decisions are not real.</div>
-  <div id="log" aria-live="polite"></div>
-  <form class="chat" id="chat">
-    <input id="input" autocomplete="off" placeholder="Or type your answers / ask a question…">
-    <button class="btn" id="send">Send</button>
+<body class="on-landing">
+<header class="top" id="top">
+  <div class="top-in">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">A</span>
+      ABC Credit
+    </div>
+    <div class="steps" id="steps" aria-live="polite"></div>
+    <button class="new" id="restart" title="New application">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="t">New application</span>
+    </button>
+  </div>
+</header>
+
+<section class="landing" aria-labelledby="hero-title">
+  <div class="hero">
+    <div class="eyebrow">Two-wheeler loans</div>
+    <h1 id="hero-title">Your loan decision,<br>in about 2 minutes</h1>
+    <p class="sub">Answer a few quick questions about you and the vehicle you're buying. You'll get a decision as soon as you submit.</p>
+    <button class="cta" id="begin">
+      Start application
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="cta-note">No documents needed at this stage</div>
+    <div class="start-error" id="start-error" hidden></div>
+
+    <div class="features">
+      <div class="feature">
+        <div class="ic"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4.5h11v7h-11z M2.8 4.8 8 8.6l5.2-3.8 M2 14 14 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <b>We don't spam you</b>
+        <span>No marketing calls or messages</span>
+      </div>
+      <div class="feature">
+        <div class="ic"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9 1.8 3.5 9h4l-.6 5.2L12.5 7h-4L9 1.8Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+        <b>Instant decision</b>
+        <span>Right after you submit</span>
+      </div>
+      <div class="feature">
+        <div class="ic"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 3 3.8v3.9c0 3 2.1 5.4 5 6.5 2.9-1.1 5-3.5 5-6.5V3.8L8 1.8Z M5.8 8l1.5 1.5 2.9-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
+        <b>Your details stay private</b>
+        <span>No ID numbers needed, and our AI assistant never sees your name, email or phone</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main><div id="log" aria-live="polite"></div></main>
+
+<div class="composer-wrap">
+  <form class="composer" id="chat">
+    <textarea id="input" rows="1" placeholder="Type a message or ask a question…" aria-label="Message"></textarea>
+    <button class="send" id="send" aria-label="Send" disabled>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
   </form>
+  <div class="foot-note">Decisions are made by ABC Credit's credit model. Your name, email and phone are hidden from our AI assistant.</div>
 </div>
+
 <script>
 const $ = id => document.getElementById(id);
 const h = (tag, attrs = {}, ...kids) => {
@@ -125,42 +308,58 @@ const h = (tag, attrs = {}, ...kids) => {
   for (const kid of kids.flat()) if (kid !== null && kid !== undefined) el.append(kid);
   return el;
 };
-let sid = null, busy = false;
+let sid = null, busy = false, finished = false;
 
-function esc(s) { return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
-function md(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|\s)_(.+?)_(?=\s|$)/g, '$1<i>$2</i>'); }
-function scroll() { $('log').scrollTop = $('log').scrollHeight; }
+const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|\s)_(.+?)_(?=\s|$)/g, '$1<i>$2</i>');
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const scroll = () => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 
-function bubble(role, text) {
-  const d = h('div', { class: 'msg ' + role });
-  d.innerHTML = role === 'bot' ? md(text) : esc(text);
-  $('log').append(d); scroll();
-  return d;
+function add(el) { el.classList.add('fade-in'); $('log').append(el); scroll(); return el; }
+function botText(text) { const d = h('div', { class: 'bot' }); d.innerHTML = md(text); return add(d); }
+function userText(text) { return add(h('div', { class: 'user' }, text)); }
+
+/* Decision messages get a result card instead of plain text. */
+function botMessage(text) {
+  const approved = /approved in principle/i.test(text), declined = /unable to approve/i.test(text);
+  if (!approved && !declined) return botText(text);
+  const [, ...rest] = text.split('\n\n');
+  const placeholder = rest.find(p => /placeholder/i.test(p));
+  const body = rest.filter(p => p !== placeholder).map(p => { const e = h('p'); e.innerHTML = md(cap(p.replace(/^Next steps:\s*/i, ''))); return e; });
+  const icon = approved
+    ? '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M3.5 8.3l2.8 2.8 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    : '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 8h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  const ic = h('div', { class: 'icon' }); ic.innerHTML = icon;
+  return add(h('div', { class: 'result ' + (approved ? 'ok' : 'no') }, ic,
+    h('div', {}, h('h2', {}, approved ? 'Approved in principle' : 'We can’t approve this right now'),
+      h('div', { class: 'label' }, 'Next steps'), ...body,
+      placeholder ? h('small', {}, 'Placeholder model in use – this is not a real credit decision.') : null)));
 }
 
-/* ---------- question card ---------- */
+/* ---------- form card ---------- */
 function choiceField(f, q) {
-  const opts = f.allow_other ? [...f.options, { value: '__other', label: 'Other…', hint: '' }] : f.options;
+  const opts = f.allow_other ? [...f.options, { value: '__other', label: 'Other', hint: 'Describe it in your own words' }] : f.options;
   const known = f.options.some(o => o.value === f.value);
   let selected = f.value ? (known ? f.value : '__other') : null;
-  const otherBox = h('div', { class: 'field-box other-input' + (selected === '__other' ? ' show' : '') },
-    h('input', { type: 'text', placeholder: 'Describe…', value: known ? '' : (f.value || '') }));
-  const otherInput = otherBox.querySelector('input');
-  const list = h('div', { class: 'opts', role: 'radiogroup', tabindex: 0, 'aria-label': f.question });
-  const rows = opts.map((o, i) => h('button', {
-      type: 'button', class: 'opt', role: 'radio', tabindex: -1, 'data-v': o.value,
+  const other = h('div', { class: 'field other' + (selected === '__other' ? ' show' : '') },
+    h('input', { type: 'text', placeholder: 'Type your answer', value: known ? '' : (f.value || '') }));
+  const otherInput = other.querySelector('input');
+  const list = h('div', { class: 'opts' + (opts.length > 1 ? ' cols-2' : ''), role: 'radiogroup', tabindex: 0, 'aria-label': f.question });
+  const rows = opts.map((o, i) => h('button', { type: 'button', class: 'opt', role: 'radio', tabindex: -1, 'data-v': o.value,
       onclick: () => pick(o.value, true) },
-    h('span', { class: 'ptr' }, '❯'), h('span', { class: 'num' }, `${i + 1}.`),
-    h('span', { class: 'lab' }, o.label, o.hint ? h('span', { class: 'hint' }, o.hint) : null)));
+    h('span', { class: 'radio' }),
+    h('span', { class: 'txt' }, h('span', { class: 'lab' }, o.label), o.hint ? h('span', { class: 'hint' }, o.hint) : null),
+    i < 9 ? h('span', { class: 'key' }, String(i + 1)) : null));
   list.append(...rows);
   let focusIdx = Math.max(0, opts.findIndex(o => o.value === selected));
   function paint() {
+    const inside = list.contains(document.activeElement);
     rows.forEach((r, i) => {
       r.classList.toggle('sel', r.dataset.v === selected);
-      r.classList.toggle('focus', i === focusIdx && list.contains(document.activeElement));
-      r.setAttribute('aria-checked', r.dataset.v === selected);
+      r.classList.toggle('focus', inside && i === focusIdx);
+      r.setAttribute('aria-checked', String(r.dataset.v === selected));
     });
-    otherBox.classList.toggle('show', selected === '__other');
+    other.classList.toggle('show', selected === '__other');
   }
   function pick(v, advance) {
     selected = v; focusIdx = opts.findIndex(o => o.value === v);
@@ -168,18 +367,18 @@ function choiceField(f, q) {
     if (v === '__other') otherInput.focus();
     else if (advance) q.dispatchEvent(new CustomEvent('answered', { bubbles: true }));
   }
-  list.addEventListener('focus', paint); list.addEventListener('blur', paint);
+  list.addEventListener('focusin', paint); list.addEventListener('focusout', () => setTimeout(paint));
   list.addEventListener('keydown', e => {
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault(); focusIdx = (focusIdx + (e.key === 'ArrowDown' ? 1 : -1) + opts.length) % opts.length; paint();
-    } else if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault(); pick(opts[focusIdx].value, true);
-    } else if (/^[1-9]$/.test(e.key) && +e.key <= opts.length) {
-      e.preventDefault(); pick(opts[+e.key - 1].value, true);
-    }
+    if (e.target === otherInput) return;
+    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+    if (step) { e.preventDefault(); focusIdx = (focusIdx + step + opts.length) % opts.length; paint(); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(opts[focusIdx].value, true); }
+    else if (/^[1-9]$/.test(e.key) && +e.key <= opts.length) { e.preventDefault(); pick(opts[+e.key - 1].value, true); }
   });
-  otherInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); q.dispatchEvent(new CustomEvent('answered', { bubbles: true })); } });
-  q.append(list, otherBox);
+  otherInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); q.dispatchEvent(new CustomEvent('answered', { bubbles: true })); }
+  });
+  q.append(list, other);
   q.focusTarget = list;
   q.getValue = () => selected === '__other' ? otherInput.value.trim() : selected;
   paint();
@@ -188,109 +387,131 @@ function choiceField(f, q) {
 function textField(f, q) {
   const listId = f.suggestions ? 'dl-' + f.name + '-' + Math.random().toString(36).slice(2, 7) : null;
   const input = h('input', {
-    type: 'text', name: f.name, placeholder: f.placeholder || '', value: f.value ?? '',
-    inputmode: f.kind === 'number' ? 'numeric' : (f.kind === 'money' ? 'decimal' : null),
-    list: listId, autocomplete: 'off',
+    type: { email: 'email', tel: 'tel' }[f.kind] || 'text', name: f.name, placeholder: f.placeholder || '',
+    value: f.value ?? '', 'aria-label': f.question,
+    inputmode: { number: 'numeric', money: 'decimal', email: 'email', tel: 'tel' }[f.kind] || null, list: listId,
+    autocomplete: { Name: 'name', Email: 'email', Phone: 'tel-national' }[f.name] || 'off',
     onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); q.dispatchEvent(new CustomEvent('answered', { bubbles: true })); } },
     oninput: () => q.classList.remove('has-error') });
-  const box = h('div', { class: 'field-box' }, f.kind === 'money' ? h('span', { class: 'pre' }, '₹') : null, input);
-  q.append(box);
+  q.append(h('div', { class: 'field' }, f.kind === 'money' ? h('span', { class: 'pre' }, '₹') : null, input));
   if (listId) q.append(h('datalist', { id: listId }, f.suggestions.map(s => h('option', { value: s }))));
   q.focusTarget = input;
   q.getValue = () => input.value.trim();
 }
 
-function questionCard(form) {
-  const card = h('div', { class: 'card', 'data-type': form.type });
-  const chip = h('span', { class: 'chip' }, form.title);
-  const head = h('div', { class: 'card-head' }, chip, h('span', { class: 'step' }, `Step ${form.step} of ${form.steps}`));
-  const body = h('div', { class: 'body' });
-  card.append(head, body);
+/* ---------- vehicle price prefill + loan slider ---------- */
+const toNum = v => { const n = parseFloat(String(v || '').replace(/[,₹\s]/g, '')); return isFinite(n) ? n : null; };
+const fmtIN = n => Math.round(n).toLocaleString('en-IN');
 
-  let current = { qs: [], go: null };
-  body.addEventListener('answered', e => {      // move to the next unanswered question, then the button
-    const i = current.qs.indexOf(e.target.closest('.q'));
-    const next = current.qs.slice(i + 1).find(q => !q.getValue()) || null;
-    if (next) next.focusTarget.focus(); else current.go.focus();
-  });
-  if (form.type === 'review') renderReview(); else renderQuestions(form.fields, 'Continue →');
-  return card;
+function linkVehicle(qs) {
+  const by = Object.fromEntries(qs.map(q => [q.field.name, q]));
+  const model = qs.find(q => q.field.prices), loan = qs.find(q => q.field.slider);
+  const price = by[(model && model.field.fills) || (loan && loan.field.slider.of)];
+  if (!price) return;
+  const priceIn = price.focusTarget;
+  let autoFilled = false;        // true while the price shown is our suggestion, not the applicant's own
 
-  function renderReview() {
-    body.replaceChildren(
-      h('dl', { class: 'review' }, form.fields.flatMap(f => [h('dt', {}, cap(f.label)), h('dd', {}, f.display)])),
-      h('div', { class: 'card-foot' },
-        h('button', { type: 'button', class: 'btn', onclick: () => submitAction(card) }, 'Submit application'),
-        h('button', { type: 'button', class: 'btn ghost', onclick: () => renderQuestions(form.fields, 'Save changes') }, 'Edit')));
-    body.querySelector('.btn').focus();
+  if (model) {
+    const note = h('div', { class: 'q-note', hidden: true });
+    price.append(note);
+    const lookup = v => {
+      const key = String(v || '').trim().toUpperCase();
+      return Object.entries(model.field.prices).find(([m]) => m.toUpperCase() === key);
+    };
+    const onModel = () => {
+      const hit = lookup(model.getValue());
+      if (hit && (autoFilled || !priceIn.value.trim())) {
+        priceIn.value = fmtIN(hit[1]); autoFilled = true;
+        price.classList.remove('has-error');
+        note.innerHTML = 'Typical on-road price for this model. <b>Change it</b> if yours is different.';
+        note.hidden = false;
+        priceIn.dispatchEvent(new Event('price'));
+      } else if (!hit && autoFilled) { note.hidden = true; }
+    };
+    model.focusTarget.addEventListener('input', onModel);
+    model.focusTarget.addEventListener('change', onModel);
+    priceIn.addEventListener('input', () => { autoFilled = false; note.hidden = true; });
+    if (model.getValue() && !priceIn.value) onModel();
   }
 
-  function renderQuestions(fields, cta) {
+  if (loan) {
+    const cfg = loan.field.slider, loanIn = loan.focusTarget;
+    const range = h('input', { type: 'range', min: cfg.min_pct, max: cfg.max_pct, step: 1, value: cfg.default_pct,
+      'aria-label': 'Loan as a percentage of the vehicle price' });
+    const pctLabel = h('b'), amtLabel = h('span');
+    loan.append(h('div', { class: 'slider' },
+      h('div', { class: 'slider-top' }, h('span', {}, pctLabel, ' of vehicle price'), amtLabel),
+      range,
+      h('div', { class: 'slider-ends' }, h('span', {}, cfg.min_pct + '%'), h('span', {}, cfg.max_pct + '% · full price'))));
+    const paint = () => {
+      const p = toNum(priceIn.value), pct = +range.value;
+      range.disabled = !p;
+      range.style.setProperty('--fill', ((pct - cfg.min_pct) / (cfg.max_pct - cfg.min_pct) * 100) + '%');
+      pctLabel.textContent = pct + '%';
+      amtLabel.textContent = p ? 'Down payment ₹' + fmtIN(p - toNum(loanIn.value || 0)) : 'Enter the price first';
+    };
+    const fromSlider = () => {
+      const p = toNum(priceIn.value); if (!p) return paint();
+      loanIn.value = fmtIN(p * range.value / 100); loan.classList.remove('has-error'); paint();
+    };
+    const fromAmount = () => {
+      const p = toNum(priceIn.value), a = toNum(loanIn.value);
+      if (p && a != null) range.value = Math.max(cfg.min_pct, Math.min(cfg.max_pct, Math.round(100 * a / p)));
+      paint();
+    };
+    range.addEventListener('input', fromSlider);
+    loanIn.addEventListener('input', fromAmount);
+    // New price: keep the chosen %, recompute the amount.
+    const onPrice = () => toNum(priceIn.value) ? fromSlider() : paint();
+    priceIn.addEventListener('input', onPrice);
+    priceIn.addEventListener('price', onPrice);
+    if (loanIn.value) fromAmount(); else if (toNum(priceIn.value)) fromSlider(); else paint();
+  }
+}
+
+function formCard(form) {
+  const card = h('section', { class: 'card', 'aria-label': form.title });
+  const title = h('div', { class: 'card-title' }, form.title);
+  const stepLabel = h('div', { class: 'card-step' }, form.type === 'review' ? 'Last step' : `Step ${form.step} of ${form.steps}`);
+  const body = h('div', { class: 'body' });
+  card.append(h('div', { class: 'card-head' }, title, stepLabel), body);
+
+  let current = { qs: [], go: null };
+  body.addEventListener('answered', e => {
+    const i = current.qs.indexOf(e.target.closest('.q'));
+    const next = current.qs.slice(i + 1).find(q => !q.getValue());
+    (next ? next.focusTarget : current.go).focus();
+  });
+  if (form.type === 'review') review(); else questions(form.fields, 'Continue');
+  return card;
+
+  function review() {
+    body.replaceChildren(
+      h('dl', { class: 'review' }, form.fields.map(f => h('div', {}, h('dt', {}, cap(f.label)), h('dd', {}, f.display)))),
+      h('div', { class: 'card-foot' },
+        h('button', { type: 'button', class: 'btn primary', onclick: () => exchange({ action: 'submit' }, 'Submit application') }, 'Submit application'),
+        h('button', { type: 'button', class: 'btn ghost', onclick: () => questions(form.fields, 'Save changes') }, 'Edit')));
+    setTimeout(() => body.querySelector('.btn').focus({ preventScroll: true }));
+  }
+
+  function questions(fields, cta) {
     const qs = fields.map(f => {
-      const q = h('div', { class: 'q' + (f.error ? ' has-error' : ''), 'data-name': f.name },
-        h('div', { class: 'q-title' }, f.question));
-      if (f.kind === 'choice') choiceField(f, q); else textField(f, q);
+      const q = h('div', { class: 'q' + (f.error ? ' has-error' : '') }, h('div', { class: 'q-title' }, f.question));
+      (f.kind === 'choice' ? choiceField : textField)(f, q);
       if (f.error) q.append(h('div', { class: 'q-error' }, f.error));
       q.field = f;
       return q;
     });
-    const go = h('button', { type: 'button', class: 'btn', onclick: () => submitForm(card, qs) }, cta);
-    const foot = h('div', { class: 'card-foot' }, go,
-      h('span', { class: 'kbd' }, '↑↓ choose · 1-9 pick · ⏎ next'),
-      form.type === 'review' ? h('button', { type: 'button', class: 'btn ghost', onclick: renderReview }, 'Cancel') : null);
-    body.replaceChildren(...qs, foot);
+    linkVehicle(qs);
+    const go = h('button', { type: 'button', class: 'btn primary', onclick: () => submit(qs) }, cta);
+    body.replaceChildren(...qs, h('div', { class: 'card-foot' }, go,
+      form.type === 'review' ? h('button', { type: 'button', class: 'btn ghost', onclick: review }, 'Cancel') : null));
     current = { qs, go };
-    setTimeout(() => (qs.find(q => q.classList.contains('has-error') || !q.getValue()) || qs[0]).focusTarget.focus(), 0);
+    setTimeout(() => (qs.find(q => q.classList.contains('has-error') || !q.getValue()) || qs[0]).focusTarget.focus({ preventScroll: true }));
   }
 }
 
-function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
-
-function closeCards() {
-  document.querySelectorAll('.card:not(.done)').forEach(c => {
-    c.classList.add('done');
-    c.querySelector('.chip').textContent = '✓ ' + c.querySelector('.chip').textContent;
-    c.querySelectorAll('input,button').forEach(x => x.disabled = true);
-  });
-}
-
-/* ---------- server calls ---------- */
-async function post(path, body) {
-  const res = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body || {}) });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || res.statusText);
-  return data;
-}
-
-function show(r) {
-  bubble('bot', r.message.content);
-  if (r.message.form) $('log').append(questionCard(r.message.form));
-  status(r); scroll();
-}
-
-function status(r) {
-  $('progress').replaceChildren(...Array.from({ length: r.steps }, (_, i) => h('i', { class: i < r.steps_done ? 'on' : '' })));
-  $('meta').textContent = r.stage === 'done' ? 'Application complete' : `${r.collected} of ${r.total} details`;
-  $('warn').style.display = r.placeholder ? 'block' : 'none';
-  const done = r.stage === 'done';
-  $('input').disabled = $('send').disabled = done;
-}
-
-async function exchange(payload, userText) {
-  if (busy) return;
-  busy = true;
-  closeCards();
-  bubble('user', userText);
-  const t = bubble('bot', 'typing…'); t.classList.add('typing');
-  try {
-    const r = await post('/api/message', { session_id: sid, ...payload });
-    t.remove(); show(r);
-  } catch (err) {
-    t.remove(); bubble('bot', 'Sorry, something went wrong: ' + err.message);
-  } finally { busy = false; }
-}
-
-function submitForm(card, qs) {
+function submit(qs) {
   let missing = null;
   const values = {}, shown = [];
   for (const q of qs) {
@@ -304,24 +525,111 @@ function submitForm(card, qs) {
   exchange({ form: values }, shown.join('\n'));
 }
 
-function submitAction() { exchange({ action: 'submit' }, 'Submit application'); }
+function closeCards() {
+  document.querySelectorAll('.card:not(.done)').forEach(c => {
+    c.classList.add('done');
+    c.querySelectorAll('input, button').forEach(x => x.disabled = true);
+  });
+}
 
+/* ---------- server ---------- */
+async function post(path, body) {
+  const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function fmtMs(x) { return x < 1000 ? Math.round(x) + ' ms' : (x / 1000).toFixed(2) + ' s'; }
+function fmtS(s) { return s < 60 ? Math.round(s) + ' s' : Math.floor(s / 60) + ' min ' + String(Math.round(s % 60)).padStart(2, '0') + ' s'; }
+function timingRow(t) {
+  const cell = (label, value, sub, cls) => h('div', {}, h('span', {}, label), h('b', {}, value), sub ? h('span', { class: cls || '' }, sub) : null);
+  return h('div', { class: 'timing' },
+    t.total_s != null ? cell('Total time', fmtS(t.total_s), 'start to decision') : null,
+    cell('Decision time', fmtMs(t.decision_ms), (t.within_sla ? '✓ within ' : '✗ over ') + t.sla_s + ' s target', t.within_sla ? 'ok' : 'over'));
+}
+
+function render(r) {
+  const el = botMessage(r.message.content);
+  if (r.timing) (el.querySelector('.result > div:last-child') || el).append(timingRow(r.timing));
+  if (r.message.form) add(formCard(r.message.form));
+  status(r);
+}
+
+function status(r) {
+  finished = r.stage === 'done';
+  const done = finished ? r.steps : r.steps_done;
+  $('steps').replaceChildren(
+    h('span', { class: 'label' }, finished ? 'Complete' : `Step ${Math.min(done + 1, r.steps)} of ${r.steps}`),
+    h('span', { class: 'dots' }, Array.from({ length: r.steps }, (_, i) => h('i', { class: i < done ? 'on' : '' }))));
+  if (r.placeholder && !document.querySelector('.notice')) $('log').prepend(h('div', { class: 'notice' }, 'Demo mode: placeholder credit model'));
+  $('input').disabled = finished;
+  $('input').placeholder = finished ? 'Application complete' : 'Type a message or ask a question…';
+  syncSend();
+}
+
+async function exchange(payload, shownText) {
+  if (busy) return;
+  busy = true; syncSend();
+  closeCards();
+  userText(shownText);
+  const t = add(h('div', { class: 'typing', 'aria-label': 'Assistant is typing' }, h('i'), h('i'), h('i')));
+  try {
+    const r = await post('/api/message', { session_id: sid, ...payload });
+    t.remove(); render(r);
+  } catch (err) {
+    t.remove(); botText('Sorry, something went wrong: ' + err.message);
+  } finally { busy = false; syncSend(); }
+}
+
+/* ---------- composer ---------- */
+const input = $('input');
+function syncSend() { $('send').disabled = busy || finished || !input.value.trim(); }
+function autosize() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 140) + 'px'; }
+input.addEventListener('input', () => { autosize(); syncSend(); });
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('chat').requestSubmit(); }
+});
 $('chat').addEventListener('submit', e => {
   e.preventDefault();
-  const text = $('input').value.trim();
-  if (!text) return;
-  $('input').value = '';
+  const text = input.value.trim();
+  if (!text || busy || finished) return;
+  input.value = ''; autosize(); syncSend();
   exchange({ text }, text);
 });
+window.addEventListener('scroll', () => $('top').classList.toggle('scrolled', window.scrollY > 4), { passive: true });
 
-async function start() {
+/* ---------- landing ---------- */
+function showLanding() {
+  sid = null; finished = false; busy = false;
   $('log').replaceChildren();
-  const r = await post('/api/session');
-  sid = r.session_id;
-  show(r);
+  $('steps').replaceChildren();
+  input.value = ''; autosize(); syncSend();
+  document.body.classList.add('on-landing');
+  $('begin').disabled = false;
+  window.scrollTo({ top: 0 });
+  $('begin').focus({ preventScroll: true });
 }
-$('restart').addEventListener('click', () => start());
-start().catch(err => bubble('bot', 'Could not start: ' + err.message));
+
+async function begin() {                 // the session (and its timer) starts only here
+  const btn = $('begin');
+  btn.disabled = true; $('start-error').hidden = true;
+  try {
+    const r = await post('/api/session');
+    sid = r.session_id;
+    document.body.classList.remove('on-landing');
+    render(r);
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'instant' }));   // start at the greeting
+  } catch (err) {
+    btn.disabled = false;
+    $('start-error').textContent = 'Could not start: ' + err.message;
+    $('start-error').hidden = false;
+  }
+}
+
+$('begin').addEventListener('click', begin);
+$('restart').addEventListener('click', showLanding);
+showLanding();
 </script>
 </body>
 </html>

@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>ABC Credit Applications</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..650&display=swap">
+<style>
+  :root {
+    --bg: #fafaf8; --surface: #ffffff; --subtle: #f7f7f5; --hover: #f3f2ee;
+    --text: #1a1a18; --text-2: #5f5e5a; --text-3: #8f8d87;
+    --line: #e8e6e1; --line-strong: #d6d3cc;
+    --accent: #c96442; --accent-soft: #fbf1ec;
+    --err: #b42318; --err-soft: #fef3f2; --ok: #2f7d4f; --ok-soft: #eef7f1;
+    --warn: #8a5a00; --warn-soft: #fff8e6; --info: #2b5a9e; --info-soft: #eef3fb;
+    --shadow: 0 1px 2px rgba(20,20,15,.04), 0 4px 16px rgba(20,20,15,.05);
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans);
+         font-feature-settings: "cv11", "ss03", "tnum"; -webkit-font-smoothing: antialiased; letter-spacing: -.006em; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  .top { position: sticky; top: 0; z-index: 3; background: rgba(250,250,248,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 0 16px; }
+  .top .wrap { display: flex; align-items: center; gap: 12px; height: 52px; }
+  .brand { display: flex; align-items: center; gap: 8px; white-space: nowrap; font-weight: 600; letter-spacing: -.018em; }
+  .mark { width: 24px; height: 24px; border-radius: 7px; background: var(--accent); color: #fff; display: grid; place-items: center; font: 700 13px/1 var(--sans); }
+  .tag { font-size: 12px; color: var(--text-3); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-weight: 500; }
+  .nav { display: flex; gap: 2px; margin-left: 14px; }
+  .nav a { color: var(--text-2); text-decoration: none; font-size: 13.5px; padding: 6px 10px; border-radius: 8px; font-weight: 500; white-space: nowrap; }
+  .nav a:hover { background: var(--hover); color: var(--text); }
+  .nav a.on { color: var(--text); background: var(--surface); box-shadow: 0 0 0 1px var(--line) inset; }
+  .top-r { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--text-3); font-size: 12.5px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 5px 11px; font-size: 13px; color: var(--text-2); }
+  .btn:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn svg { width: 14px; height: 14px; }
+
+  h1 { font-size: 22px; font-weight: 600; letter-spacing: -.025em; margin: 24px 0 16px; }
+  .sub { color: var(--text-2); margin: 0 0 18px; font-size: 13.5px; }
+
+  .stats { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; text-align: left; cursor: pointer; transition: border-color .15s; }
+  .stat:hover { border-color: var(--line-strong); }
+  .stat.static { cursor: default; } .stat.static:hover { border-color: var(--line); }
+  .sla { font-size: 12px; font-weight: 500; } .sla.ok { color: var(--ok); } .sla.no { color: var(--err); }
+  .stat.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .stat .k { font-size: 12px; color: var(--text-3); display: flex; align-items: center; gap: 6px; }
+  .stat .v { font-size: 22px; font-weight: 600; letter-spacing: -.03em; margin-top: 2px; }
+  .stat .n { font-size: 12px; color: var(--text-3); }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-bottom: 12px; }
+  .search { flex: 1 1 260px; position: relative; }
+  .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--text-3); }
+  .search input { width: 100%; padding-left: 32px; }
+  input, select { height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 0 10px; font-size: 13px; outline: none; }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .f-label { font-size: 12px; color: var(--text-3); margin-left: 4px; }
+  .dates { display: flex; align-items: center; gap: 6px; }
+  .dates input { width: 140px; }
+  .clear { color: var(--accent); background: none; border: 0; font-size: 13px; padding: 4px 6px; }
+
+  .table-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  th { text-align: left; font-weight: 500; font-size: 12px; color: var(--text-3); padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--subtle); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; white-space: nowrap; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover td { background: var(--hover); }
+  tbody tr:last-child td { border-bottom: 0; }
+  .num { text-align: right; }
+  .muted { color: var(--text-3); }
+  .mono { font-family: var(--mono); font-size: 12.5px; }
+  .two { display: flex; flex-direction: column; line-height: 1.35; }
+  .two small { color: var(--text-3); font-size: 12px; }
+  .vehicle { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+  .chev { width: 28px; color: var(--text-3); text-align: right; }
+  tbody tr:hover .chev { color: var(--text); }
+
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; border-radius: 999px; padding: 2px 9px 2px 7px; white-space: nowrap; }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .s-approved { color: var(--ok); background: var(--ok-soft); }
+  .s-declined { color: var(--err); background: var(--err-soft); }
+  .s-review { color: var(--info); background: var(--info-soft); }
+  .s-in_progress { color: var(--warn); background: var(--warn-soft); }
+  .s-not_started { color: var(--text-2); background: var(--subtle); }
+  .s-abandoned { color: var(--text-3); background: var(--subtle); }
+  .s-abandoned::before { background: transparent; border: 1px solid currentColor; }
+  .prog { display: flex; align-items: center; gap: 8px; }
+  .bar { width: 54px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .risk { display: inline-flex; align-items: center; gap: 6px; }
+
+  .empty { padding: 48px 16px; text-align: center; color: var(--text-3); }
+  .pager { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--line); font-size: 13px; color: var(--text-2); flex-wrap: wrap; }
+  .pager .sp { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .pager select { height: 30px; }
+  .pages { display: flex; gap: 4px; }
+  .pages button { min-width: 30px; height: 30px; border-radius: 7px; border: 1px solid transparent; background: none; font-size: 13px; color: var(--text-2); }
+  .pages button:hover:not(:disabled) { background: var(--hover); }
+  .pages button.on { border-color: var(--line-strong); background: var(--surface); color: var(--text); font-weight: 600; }
+  .pages button:disabled { opacity: .4; cursor: default; }
+  .err-banner { background: var(--err-soft); color: var(--err); border: 1px solid #f6d3cf; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; display: none; }
+
+  /* drawer */
+  .scrim { position: fixed; inset: 0; background: rgba(20,20,15,.25); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 4; }
+  .scrim.on { opacity: 1; pointer-events: auto; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100vw); background: var(--surface); border-left: 1px solid var(--line);
+            transform: translateX(100%); transition: transform .22s ease; z-index: 5; display: flex; flex-direction: column; box-shadow: -12px 0 32px rgba(20,20,15,.08); }
+  .drawer.on { transform: none; }
+  .d-head { padding: 16px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; gap: 12px; }
+  .d-head h2 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
+  .d-head .mono { color: var(--text-3); }
+  .x { margin-left: auto; border: 0; background: none; width: 30px; height: 30px; border-radius: 8px; color: var(--text-2); font-size: 18px; line-height: 1; }
+  .x:hover { background: var(--hover); }
+  .d-body { overflow-y: auto; padding: 16px 20px 32px; }
+  .sec { margin-bottom: 22px; }
+  .sec h3 { font-size: 12px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+  dl { display: grid; grid-template-columns: 150px 1fr; gap: 6px 12px; margin: 0; }
+  dt { color: var(--text-3); }
+  dd { margin: 0; overflow-wrap: anywhere; }
+  .decision { border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+  .decision.ok { background: var(--ok-soft); color: var(--ok); }
+  .decision.no { background: var(--err-soft); color: var(--err); }
+  .decision b { font-size: 17px; }
+  .decision .meta { margin-left: auto; text-align: right; font-size: 12.5px; }
+  .gauge { position: relative; height: 6px; border-radius: 3px; background: var(--line); margin: 8px 0 4px; }
+  .gauge i { position: absolute; top: 0; left: 0; height: 100%; border-radius: 3px; }
+  .gauge .t { position: absolute; top: -4px; width: 2px; height: 14px; background: var(--text); }
+  .tl { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--line); margin-left: 4px; }
+  .tl li { position: relative; padding: 0 0 12px 16px; }
+  .tl li::before { content: ""; position: absolute; left: -4px; top: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); }
+  .tl li.k-prediction::before { background: var(--accent); }
+  .tl .when { font-size: 12px; color: var(--text-3); }
+  .tl .what { font-weight: 500; }
+  .tl .det { font-size: 12.5px; color: var(--text-2); overflow-wrap: anywhere; }
+  .tl .det .e { color: var(--err); }
+  details summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
+  pre { background: var(--subtle); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font: 12px/1.5 var(--mono); overflow: auto; }
+  .note { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+
+  @media (max-width: 1000px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (min-width: 1001px) and (max-width: 1240px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (max-width: 560px) {
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dates input { width: auto; flex: 1 1 0; min-width: 0; } .dates { flex: 1 1 100%; } .filters select { flex: 1 1 140px; }
+    dl { grid-template-columns: 120px 1fr; }
+    .top-r .upd { display: none; } .tag { display: none; } .nav { margin-left: 4px; } #refresh { font-size: 0; gap: 0; }
+  }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand"><span class="mark">A</span>ABC Credit <span class="tag">Admin</span></div>
+  <nav class="nav"><a href="/admin" class="on">Applications</a><a href="/admin/report">Model report</a></nav>
+  <div class="top-r">
+    <span class="upd" id="updated"></span>
+    <button class="btn" id="refresh" title="Refresh"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"/></svg>Refresh</button>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <h1>Loan Applications</h1>
+
+  <div class="err-banner" id="err"></div>
+  <div class="stats" id="stats"></div>
+
+  <div class="filters">
+    <label class="search"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>
+      <input id="q" type="search" placeholder="Search ID, vehicle, pincode, employment…" aria-label="Search"></label>
+    <select id="status" aria-label="Status"><option value="">All statuses</option></select>
+    <select id="employment" aria-label="Employment"><option value="">All employment</option></select>
+    <select id="loans" aria-label="Existing loans"><option value="">Existing loans: any</option></select>
+    <span class="dates"><span class="f-label">Started</span><input id="from" type="date" aria-label="From"><span class="muted">–</span><input id="to" type="date" aria-label="To"></span>
+    <select id="sort" aria-label="Sort">
+      <option value="started_desc">Newest first</option>
+      <option value="started_asc">Oldest first</option>
+      <option value="activity_desc">Recent activity</option>
+      <option value="duration_desc">Longest time</option>
+      <option value="duration_asc">Shortest time</option>
+      <option value="loan_desc">Largest loan</option>
+      <option value="decision_desc">Slowest decision</option>
+      <option value="risk_desc">Highest risk</option>
+    </select>
+    <button class="clear" id="clear">Clear</button>
+  </div>
+
+  <div class="table-card">
+    <div class="scroll"><table>
+      <thead><tr>
+        <th>Started</th><th>Application</th><th>Status</th><th class="num">Time taken</th><th class="num" title="Final input (submit) to Approve/Decline response">Decision time</th>
+        <th class="num">Loan</th><th class="num">P(decline)</th><th></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+    <div class="pager">
+      <span id="range"></span>
+      <div class="sp">
+        <div class="pages" id="pages"></div>
+        <select id="size" aria-label="Rows per page"><option>10</option><option selected>20</option><option>50</option><option>100</option></select>
+      </div>
+    </div>
+  </div>
+  <div style="height:40px"></div>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="d-head"><div><h2 id="d-title">Application</h2><div class="mono" id="d-id"></div></div><button class="x" id="d-close" aria-label="Close">×</button></div>
+  <div class="d-body" id="d-body"></div>
+</aside>
+
+<script>
+const STATUS = {
+  approved: "Approved", declined: "Declined", review: "Awaiting submit",
+  in_progress: "In progress", not_started: "Not started", abandoned: "Abandoned",
+};
+const EVENT = {
+  session_start: "Application started", user_form: "Submitted a form step", user_message: "Typed a message",
+  extraction: "Answers validated", user_submit: "Pressed submit", prediction: "Model decision",
+  user_message_after_decision: "Message after decision", decision_timing: "Decision timing recorded",
+};
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const inr = (n) => n == null ? "" : "₹" + Math.round(n).toLocaleString("en-IN");
+const dur = (s) => {
+  if (s == null) return "";
+  if (s < 60) return Math.round(s) + "s";
+  const m = Math.floor(s / 60), r = Math.round(s % 60);
+  if (m < 60) return `${m}m ${String(r).padStart(2, "0")}s`;
+  const h = Math.floor(m / 60); return `${h}h ${m % 60}m`;
+};
+const dt = (iso) => new Date(iso);
+const fmtDate = (iso) => dt(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+const fmtTime = (iso) => dt(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const ago = (iso) => {
+  const s = (Date.now() - dt(iso)) / 1000;
+  if (s < 60) return "just now"; if (s < 3600) return Math.floor(s / 60) + " min ago";
+  if (s < 86400) return Math.floor(s / 3600) + " h ago"; return Math.floor(s / 86400) + " d ago";
+};
+const pill = (s) => `<span class="pill s-${s}">${STATUS[s] || s}</span>`;
+
+// ---- state <-> URL ----
+const KEYS = ["q", "status", "employment", "loans", "from", "to", "sort", "page", "page_size"];
+const state = Object.fromEntries(KEYS.map((k) => [k, ""]));
+const url = new URLSearchParams(location.search);
+KEYS.forEach((k) => { if (url.get(k)) state[k] = url.get(k); });
+state.page = state.page || "1"; state.page_size = state.page_size || "20"; state.sort = state.sort || "started_desc";
+let lookupsLoaded = false;
+
+function syncInputs() {
+  ["q", "status", "employment", "loans", "from", "to", "sort"].forEach((k) => { $(k).value = state[k]; });
+  $("size").value = state.page_size;
+}
+function qs() {
+  const p = new URLSearchParams();
+  KEYS.forEach((k) => { if (state[k]) p.set(k, state[k]); });
+  return p.toString();
+}
+
+// ---- data ----
+let loading = 0;
+async function load() {
+  const my = ++loading;
+  history.replaceState(null, "", "/admin" + (qs() ? "?" + qs() : "") + location.hash);
+  try {
+    const r = await fetch("/api/admin/applications?" + qs() + "&tz=" + new Date().getTimezoneOffset());
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || r.statusText);
+    if (my !== loading) return;
+    $("err").style.display = "none";
+    if (!lookupsLoaded) fillLookups(data);
+    renderStats(data.summary);
+    renderRows(data.items);
+    renderPager(data);
+    $("updated").textContent = "Updated " + new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  } catch (e) {
+    $("err").textContent = "Couldn't load applications: " + e.message;
+    $("err").style.display = "block";
+  }
+}
+
+function fillLookups(data) {
+  lookupsLoaded = true;
+  $("status").insertAdjacentHTML("beforeend", Object.entries(STATUS).map(([k, v]) => `<option value="${k}">${v}</option>`).join(""));
+  $("employment").insertAdjacentHTML("beforeend", Object.entries(data.employment_types).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join(""));
+  $("loans").insertAdjacentHTML("beforeend", Object.entries(data.loan_options).map(([k, v]) => `<option value="${k}">Existing loans: ${esc(v)}</option>`).join(""));
+  syncInputs();
+}
+
+function renderStats(s) {
+  const b = s.by_status;
+  const decided = b.approved + b.declined;
+  const tiles = [
+    ["", "All applications", s.total, s.median_completion_s != null ? "median " + dur(s.median_completion_s) + " to decide" : "no decisions yet"],
+    ["approved", "Approved", b.approved, s.approval_rate != null ? Math.round(s.approval_rate * 100) + "% of " + decided + " decided" : "—"],
+    ["declined", "Declined", b.declined, s.approval_rate != null ? Math.round((1 - s.approval_rate) * 100) + "% of decided" : "—"],
+    ["review", "Awaiting submit", b.review, "all answers in"],
+    ["in_progress", "In progress", b.in_progress + b.not_started, b.not_started + " not started"],
+    ["abandoned", "Abandoned", b.abandoned, "idle 30+ min"],
+  ];
+  SLA_S = s.sla_s ?? 1;
+  $("stats").innerHTML = tiles.map(([k, label, v, n]) => {
+    const on = k === "in_progress" ? state.status === "in_progress,not_started" : state.status === k;
+    const val = k === "in_progress" ? "in_progress,not_started" : k;
+    return `<button class="stat ${on ? "on" : ""}" data-s="${val}">
+      <div class="k">${k ? `<span class="pill s-${k}" style="padding:0;background:none"></span>` : ""}${label}</div>
+      <div class="v">${v}</div><div class="n">${n}</div></button>`;
+  }).join("") + `<div class="stat static" title="Time from the final input (submit) to the Approve/Decline response">
+      <div class="k">Decision time · target ≤ ${SLA_S}s</div>
+      <div class="v">${s.decision_ms_median != null ? ms(s.decision_ms_median) : "—"}</div>
+      <div class="n">${s.timed ? `median · max ${ms(s.decision_ms_max)} · <span class="sla ${s.within_sla === s.timed ? "ok" : "no"}">${s.within_sla}/${s.timed} within</span>` : "no decisions yet"}</div></div>`;
+}
+
+let SLA_S = 1;
+const ms = (x) => x == null ? "" : x < 1000 ? Math.round(x) + " ms" : (x / 1000).toFixed(2) + " s";
+function decisionCell(a) {
+  if (a.decision_ms == null) return `<span class="muted">—</span>`;
+  const ok = a.within_sla;
+  return `<div class="two" style="align-items:flex-end">${ms(a.decision_ms)}<small class="sla ${ok ? "ok" : "no"}">${ok ? "✓ within" : "✗ over"} ${SLA_S}s</small></div>`;
+}
+function renderRows(items) {
+  if (!items.length) {
+    $("rows").innerHTML = `<tr><td colspan="8"><div class="empty">No applications match these filters.</div></td></tr>`;
+    return;
+  }
+  $("rows").innerHTML = items.map((a) => {
+    const d = a.answers_display, v = a.answers;
+    const who = [v.Age != null ? v.Age + " yrs" : "", d.Employment_Type || ""].filter(Boolean).join(" · ");
+    const pct = Math.round(100 * a.answered / Math.max(1, a.total_questions));
+    const progress = a.decision ? "" : `<small class="prog"><span class="bar"><i style="width:${pct}%"></i></span>${a.answered}/${a.total_questions} answered</small>`;
+    const risk = a.probability_decline != null
+      ? `<span class="mono">${(a.probability_decline * 100).toFixed(1)}%</span>` : `<span class="muted">—</span>`;
+    return `<tr data-id="${esc(a.id)}" title="Click to see all details">
+      <td><div class="two">${fmtDate(a.started_at)}<small>${fmtTime(a.started_at)}</small></div></td>
+      <td><div class="two"><span class="mono">${esc(a.id.slice(0, 8))}</span><small>${esc(who) || "No answers yet"}</small></div></td>
+      <td><div class="two" style="gap:3px;align-items:flex-start">${pill(a.status)}${progress}</div></td>
+      <td class="num"><div class="two">${dur(a.duration_s)}<small>${a.decided_at ? "to decision" : ago(a.last_activity_at)}</small></div></td>
+      <td class="num">${decisionCell(a)}</td>
+      <td class="num"><div class="two" style="align-items:flex-end">${v.Loan_Amount != null ? inr(v.Loan_Amount) : `<span class="muted">—</span>`}<small class="vehicle" title="${esc(v.Model_Description ?? "")}">${esc(v.Model_Description ?? "")}</small></div></td>
+      <td class="num">${risk}</td>
+      <td class="chev">›</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderPager(d) {
+  const start = d.total ? (d.page - 1) * d.page_size + 1 : 0, end = Math.min(d.total, d.page * d.page_size);
+  $("range").textContent = d.total ? `Showing ${start}–${end} of ${d.total}` : "No results";
+  const nums = new Set([1, d.pages, d.page - 1, d.page, d.page + 1].filter((n) => n >= 1 && n <= d.pages));
+  const sorted = [...nums].sort((a, b) => a - b);
+  let html = `<button data-p="${d.page - 1}" ${d.page <= 1 ? "disabled" : ""} aria-label="Previous">‹</button>`;
+  sorted.forEach((n, i) => {
+    if (i && n - sorted[i - 1] > 1) html += `<button disabled>…</button>`;
+    html += `<button data-p="${n}" class="${n === d.page ? "on" : ""}">${n}</button>`;
+  });
+  html += `<button data-p="${d.page + 1}" ${d.page >= d.pages ? "disabled" : ""} aria-label="Next">›</button>`;
+  $("pages").innerHTML = html;
+  state.page = String(d.page);
+}
+
+// ---- detail drawer ----
+async function openDetail(id) {
+  $("drawer").classList.add("on"); $("scrim").classList.add("on"); $("drawer").setAttribute("aria-hidden", "false");
+  $("d-id").textContent = id; $("d-title").textContent = "Application"; $("d-body").innerHTML = `<p class="muted">Loading…</p>`;
+  if (location.hash !== "#" + id) history.replaceState(null, "", location.pathname + location.search + "#" + id);
+  try {
+    const r = await fetch("/api/admin/applications/" + encodeURIComponent(id));
+    const a = await r.json();
+    if (!r.ok) throw new Error(a.error || r.statusText);
+    renderDetail(a);
+  } catch (e) { $("d-body").innerHTML = `<p class="e" style="color:var(--err)">${esc(e.message)}</p>`; }
+}
+function closeDetail() {
+  $("drawer").classList.remove("on"); $("scrim").classList.remove("on"); $("drawer").setAttribute("aria-hidden", "true");
+  history.replaceState(null, "", location.pathname + location.search);
+}
+
+function renderDetail(a) {
+  $("d-title").innerHTML = "Application " + pill(a.status);
+  const v = a.answers, d = a.answers_display;
+  let html = "";
+  if (a.decision) {
+    const p = a.probability_decline, t = a.threshold;
+    html += `<div class="decision ${a.decision === "APPROVED" ? "ok" : "no"}">
+      <div><b>${a.decision === "APPROVED" ? "Approved" : "Declined"}</b><div style="font-size:12.5px">${fmtDate(a.decided_at)}, ${fmtTime(a.decided_at)}</div></div>
+      <div class="meta">P(decline) <b class="mono" style="font-size:14px">${(p * 100).toFixed(1)}%</b><br>threshold ${(t * 100).toFixed(0)}%</div></div>
+      <div class="gauge" title="Probability of decline vs threshold"><i style="width:${Math.min(100, p * 100)}%;background:${a.decision === "APPROVED" ? "var(--ok)" : "var(--err)"}"></i><span class="t" style="left:${t * 100}%"></span></div>
+      <div class="note">Bar = P(decline); black tick = decision threshold. At or above the threshold is declined.</div><div style="height:16px"></div>`;
+  }
+  const row = (k, val) => `<dt>${k}</dt><dd>${val === "" || val == null ? `<span class="muted">—</span>` : val}</dd>`;
+  html += `<div class="sec"><h3>Timing</h3><dl>
+    ${row("Started", `${fmtDate(a.started_at)}, ${fmtTime(a.started_at)}`)}
+    ${row(a.decided_at ? "Decided" : "Last activity", `${fmtDate(a.decided_at || a.last_activity_at)}, ${fmtTime(a.decided_at || a.last_activity_at)}`)}
+    ${row("Total time", dur(a.duration_s) + (a.decided_at ? " (start → decision)" : " so far"))}
+    ${a.decision_ms != null ? row("Decision time", `${ms(a.decision_ms)} <span class="sla ${a.within_sla ? "ok" : "no"}">${a.within_sla ? "✓ within" : "✗ over"} the ${SLA_S}s target</span>${a.decision_measured ? "" : ` <span class="muted">(from log timestamps)</span>`}`) : ""}
+    ${a.model_latency_ms != null ? row("Of which model scoring", ms(a.model_latency_ms)) : ""}
+    ${row("Inputs", `${a.inputs} (${a.text_messages} typed message${a.text_messages === 1 ? "" : "s"})`)}
+    ${row("Progress", `${a.answered} of ${a.total_questions} questions answered`)}
+  </dl></div>`;
+  html += `<div class="sec"><h3>Customer answers</h3><dl>`;
+  const order = ["Age", "Pincode", "Employment_Type", "Net_salary", "PAST_LOANS_ACTIVE", "Qualifications", "Resident_Type", "Gender", "Model_Description", "Vehicle_Price", "Loan_Amount"];
+  const keys = [...order.filter((k) => k in v), ...Object.keys(v).filter((k) => !order.includes(k))];
+  keys.forEach((k) => {
+    const label = (a.labels[k] || k).replace(/^./, (c) => c.toUpperCase());
+    const code = d[k] && d[k] !== String(v[k]) && typeof v[k] === "string" ? ` <span class="muted mono">${esc(v[k])}</span>` : "";
+    html += row(esc(label), esc(d[k] ?? v[k]) + code);
+  });
+  if (a.ltv != null) html += row("LTV (derived)", a.ltv.toFixed(1) + "%");
+  if (!keys.length) html += row("—", `<span class="muted">No answers yet</span>`);
+  html += `</dl>`;
+  const errs = Object.entries(a.open_errors || {});
+  if (errs.length) html += `<div class="note" style="color:var(--err)">Unresolved: ${errs.map(([k, e]) => esc(e)).join(" · ")}</div>`;
+  html += `</div>`;
+  html += `<div class="sec"><h3>Model</h3><dl>
+    ${row("Model", esc(a.model))}${row("Version", `<span class="mono">${esc(a.model_version)}</span>`)}
+    ${a.model_latency_ms != null ? row("Scoring latency", a.model_latency_ms.toFixed(0) + " ms") : ""}
+    ${a.is_placeholder ? row("Note", "Placeholder model – not a real decision") : ""}
+  </dl>`;
+  if (Object.keys(a.engineered || {}).length)
+    html += `<details style="margin-top:10px"><summary>Engineered features</summary><pre>${esc(JSON.stringify(a.engineered, null, 2))}</pre></details>`;
+  html += `</div>`;
+  html += `<div class="sec"><h3>Timeline</h3><ul class="tl">` + a.timeline.map((e) => {
+    let det = "";
+    if (e.event === "user_form") det = Object.entries(e.values || {}).map(([k, x]) => `${esc(a.labels[k] || k)}: ${esc(x)}`).join(" · ");
+    else if (e.event === "user_message" || e.event === "user_message_after_decision") det = `“${esc(e.text)}”`;
+    else if (e.event === "extraction") {
+      const ee = Object.values(e.errors || {}); const am = e.ambiguities || [];
+      det = `${Object.keys(e.application || {}).length} answers valid` + (ee.length ? ` · <span class="e">${ee.map(esc).join("; ")}</span>` : "")
+        + (am.length ? ` · unclear: ${am.map(esc).join("; ")}` : "") + (e.confirmation && e.confirmation !== "none" ? ` · confirmation: ${esc(e.confirmation)}` : "");
+    } else if (e.event === "prediction") det = `${esc(e.decision)} · P(decline) ${(e.probability_decline * 100).toFixed(1)}% · ${Math.round(e.latency_ms)} ms`;
+    else if (e.event === "session_start") det = esc(e.model || "");
+    else if (e.event === "decision_timing") det = `final input → decision ${ms(e.decision_ms)} · total ${dur(e.total_s)}`;
+    const off = Math.round((dt(e.ts) - dt(a.started_at)) / 1000);
+    return `<li class="k-${e.event}"><div class="when">${fmtTime(e.ts)} · +${dur(off) || "0s"}</div><div class="what">${EVENT[e.event] || esc(e.event)}</div>${det ? `<div class="det">${det}</div>` : ""}</li>`;
+  }).join("") + `</ul></div>`;
+  $("d-body").innerHTML = html;
+}
+
+// ---- events ----
+let t;
+$("q").addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { state.q = $("q").value.trim(); state.page = "1"; load(); }, 250); });
+["status", "employment", "loans", "from", "to", "sort"].forEach((k) =>
+  $(k).addEventListener("change", () => { state[k] = $(k).value; state.page = "1"; load(); }));
+$("size").addEventListener("change", () => { state.page_size = $("size").value; state.page = "1"; load(); });
+$("pages").addEventListener("click", (e) => { const b = e.target.closest("button[data-p]"); if (b && !b.disabled) { state.page = b.dataset.p; load(); } });
+$("stats").addEventListener("click", (e) => {
+  const b = e.target.closest(".stat"); if (!b) return;
+  state.status = state.status === b.dataset.s ? "" : b.dataset.s;
+  $("status").value = [...$("status").options].some((o) => o.value === state.status) ? state.status : "";
+  state.page = "1"; load();
+});
+$("clear").addEventListener("click", () => {
+  Object.assign(state, { q: "", status: "", employment: "", loans: "", from: "", to: "", sort: "started_desc", page: "1" });
+  syncInputs(); load();
+});
+$("rows").addEventListener("click", (e) => { const tr = e.target.closest("tr[data-id]"); if (tr) openDetail(tr.dataset.id); });
+$("refresh").addEventListener("click", load);
+$("scrim").addEventListener("click", closeDetail);
+$("d-close").addEventListener("click", closeDetail);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDetail(); });
+setInterval(() => { if (!document.hidden) load(); }, 30000);
+
+load();
+if (location.hash.length > 1) openDetail(location.hash.slice(1));
+</script>
+</body>
+</html>

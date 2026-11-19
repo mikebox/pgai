@@ -32,7 +32,7 @@ class FieldSpec:
     description: str      # how to interpret answers (shown to the LLM)
     validate: Validator
     question: str = ""    # question shown on the form
-    kind: Literal["number", "money", "text", "choice"] = "text"
+    kind: Literal["number", "money", "text", "choice", "email", "tel"] = "text"
     options: Options | None = None
     placeholder: str = ""
     suggestions: Callable[[], list[str]] | None = None   # autocomplete values for text fields
@@ -107,6 +107,28 @@ def _text(v):
     return (s, None) if len(s) >= 2 else (None, "Please give the vehicle make and model.")
 
 
+def _name(v):
+    s = re.sub(r"\s+", " ", str(v or "")).strip()
+    if not 2 <= len(s) <= 80 or not re.fullmatch(r"[^\W\d_]+(?:[ .'-]+[^\W\d_]+)*\.?", s):
+        return None, "Please enter your full name (letters only)."
+    return s, None
+
+
+def _email(v):
+    s = str(v or "").strip().lower()
+    if not re.fullmatch(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[a-z]{2,}", s):
+        return None, "Please enter a valid email address, e.g. name@example.com."
+    return s, None
+
+
+def _phone(v):
+    s = re.sub(r"[\s()-]", "", str(v or ""))
+    s = re.sub(r"^(?:\+?91|0)(?=\d{10}$)", "", s)
+    if not re.fullmatch(r"[6-9]\d{9}", s):
+        return None, "Please enter a 10-digit Indian mobile number."
+    return s, None
+
+
 def _codes(options: Options) -> str:
     return ", ".join(f"{k}={label} ({hint})" for k, (label, hint) in options.items())
 
@@ -149,7 +171,39 @@ def vehicle_models() -> list[str]:
     return []
 
 
+@lru_cache(maxsize=1)
+def vehicle_prices() -> dict[str, float]:
+    """Typical on-road price per vehicle model, from the training data (price = loan / LTV).
+
+    Median over that model's applications, rounded to the nearest ₹500. Used to prefill
+    the price question; the applicant can always change it.
+    """
+    try:
+        import pandas as pd
+        for name in ("training_data_clean.csv", "training_data.csv"):
+            p = PROJECT_ROOT / "data" / name
+            if p.exists():
+                d = pd.read_csv(p, usecols=["Model_Description", "Loan_Amount", "LTV"]).dropna()
+                d = d[d["LTV"] > 0]
+                price = (d["Loan_Amount"] / d["LTV"] * 100).groupby(d["Model_Description"]).median()
+                return {m: float(round(v / 500) * 500) for m, v in price.items()}
+    except Exception:
+        pass
+    return {}
+
+
 FIELDS: dict[str, FieldSpec] = {f.name: f for f in [
+    # Contact details: always collected (step 1), never sent to the credit model, and never sent to
+    # the LLM in clear text – see chat/pii.py. The LLM only ever sees placeholders like [EMAIL_1].
+    FieldSpec("Name", "name", "Applicant's full name. Only ever appears as a placeholder like [NAME_1]; "
+              "return that placeholder exactly as written.", _name,
+              question="What's your full name?", kind="text", placeholder="As on your PAN / Aadhaar"),
+    FieldSpec("Email", "email", "Applicant's email. Only ever appears as a placeholder like [EMAIL_1]; "
+              "return that placeholder exactly as written.", _email,
+              question="Your email address", kind="email", placeholder="name@example.com"),
+    FieldSpec("Phone", "mobile number", "Applicant's mobile number. Only ever appears as a placeholder like "
+              "[PHONE_1]; return that placeholder exactly as written.", _phone,
+              question="Your mobile number", kind="tel", placeholder="10-digit mobile number"),
     FieldSpec("Age", "age", "Applicant's age in whole years.", _age,
               question="How old are you?", kind="number", placeholder="e.g. 28"),
     FieldSpec("Pincode", "pincode", "6-digit postal code of where the applicant lives.", _pincode,
@@ -185,7 +239,11 @@ FIELDS: dict[str, FieldSpec] = {f.name: f for f in [
 
 
 # (id, title shown on the form header, fields in order)
+# Asked of every applicant regardless of the model (step 1). PII: kept out of the model input and the LLM.
+CONTACT_FIELDS: list[str] = ["Name", "Email", "Phone"]
+
 GROUPS: list[tuple[str, str, list[str]]] = [
+    ("contact", "Your contact details", CONTACT_FIELDS),
     ("about", "About you", ["Age", "Pincode", "Employment_Type", "Qualifications", "Resident_Type", "Gender"]),
     ("finances", "Your finances", ["Net_salary", "PAST_LOANS_ACTIVE"]),
     ("vehicle", "Your vehicle", ["Model_Description", "Vehicle_Price", "Loan_Amount"]),
@@ -203,7 +261,7 @@ DERIVED: dict[str, DerivedField] = {
 
 def fields_to_collect(model_fields: list[str]) -> list[str]:
     """Expand the model's required fields into fields we must ask the user for (in group order)."""
-    need: list[str] = []
+    need: list[str] = list(CONTACT_FIELDS)
     for f in model_fields:
         for n in (DERIVED[f].inputs if f in DERIVED else (f,)):
             if n not in FIELDS:
@@ -244,6 +302,12 @@ def field_ui(name: str, value=None, error: str | None = None) -> dict:
         d["allow_other"] = s.allow_other
     if s.suggestions:
         d["suggestions"] = s.suggestions()
+    if name == "Model_Description":
+        d["prices"] = vehicle_prices()          # model -> typical price, to prefill Vehicle_Price
+        d["fills"] = "Vehicle_Price"
+    if name == "Loan_Amount":
+        # Slider as a % of the vehicle price (that % is the LTV). Loan can't exceed the price.
+        d["slider"] = {"of": "Vehicle_Price", "min_pct": 10, "max_pct": 100, "default_pct": 80}
     return d
 
 

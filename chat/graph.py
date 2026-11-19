@@ -12,7 +12,9 @@ the review card.
 Questions are asked in themed groups (fields.GROUPS), one form per group.
 Form answers are validated directly in code (no LLM call); Gemini is used to
 read free-text messages, map "Other" answers to codes, and write clarifying
-questions. State is persisted per session by the checkpointer.
+questions. Every Gemini call goes through `pii.PIISafeLLM`: name, email, phone
+and other identifiers are swapped for placeholders before the prompt leaves
+the process and restored in the output. State is persisted per session by the checkpointer.
 """
 from __future__ import annotations
 
@@ -24,6 +26,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from . import audit, observability
+from .pii import PIISafeLLM
 from .fields import (FIELDS, build_model_input, cross_validate, display, field_ui,
                      fields_to_collect, groups_for)
 from .llm import LLM, GeminiLLM
@@ -112,15 +115,15 @@ def build_graph(llm: LLM, model: LoanModel, checkpointer=None):
                      if FIELDS[k].kind == "choice" and v and FIELDS[k].validate(v)[1]}
             if other:
                 text = "; ".join(f"{FIELDS[k].question} {v}" for k, v in other.items())
-                ex = llm.extract(f"Applicant: {text}", {}, list(other))
+                ex = PIISafeLLM(llm, app).extract(f"Applicant: {text}", {}, list(other))
                 for k in other:
                     mapped = getattr(ex.fields, k, None)
                     raw[k] = mapped if mapped else raw[k]
             changed = apply_values(raw, app, errors)
         else:
             kind = "text"
-            audit.log_event(sid, "user_message", text=audit.mask_text(msg["content"]))
-            ex = llm.extract(_transcript(state["messages"]), audit.mask_fields(app), collect)
+            audit.log_event(sid, "user_message", text=audit.mask_text(msg["content"], app))
+            ex = PIISafeLLM(llm, app).extract(_transcript(state["messages"]), audit.mask_fields(app), collect)
             changed = apply_values(ex.fields.model_dump(), app, errors)
             ambiguities = list(ex.ambiguities)
             confirmation = ex.confirmation
@@ -170,7 +173,7 @@ def build_graph(llm: LLM, model: LoanModel, checkpointer=None):
         else:
             parts.append("All details are collected and a review card is shown below; ask them to check it and "
                          "press Submit, or tell you what to change.")
-        text = llm.reply(_transcript(state["messages"]), " ".join(parts))
+        text = PIISafeLLM(llm, app).reply(_transcript(state["messages"]), " ".join(parts))
         return {"messages": [{"role": "assistant", "content": text, "form": form}]}
 
     def confirm(state: ChatState) -> dict:
@@ -199,7 +202,7 @@ def build_graph(llm: LLM, model: LoanModel, checkpointer=None):
 
     def closed(state: ChatState) -> dict:
         audit.log_event(state["session_id"], "user_message_after_decision",
-                        text=audit.mask_text(state["messages"][-1]["content"]))
+                        text=audit.mask_text(state["messages"][-1]["content"], state.get("application")))
         return {"messages": [{"role": "assistant", "content":
                 "Your application has already been submitted and decided. Start a new application to apply again."}]}
 
@@ -241,9 +244,8 @@ class LoanChatbot:
     def new_session(self) -> tuple[str, dict]:
         sid = uuid.uuid4().hex
         greeting = {"role": "assistant", "form": _group_form(groups_for(self.collect), {}, {}), "content":
-                    f"Hi! I'm ABC Credit's two-wheeler loan assistant. Answer {self.n_questions} quick questions in "
-                    f"{self.n_steps} short steps (about 2 minutes) and you'll get a decision right away. "
-                    "I won't ask for your name, phone or ID numbers."}
+                    f"Let's get started – {self.n_questions} quick questions in {self.n_steps} short steps. "
+                    "First, your contact details. You can also type your answers or ask me anything below."}
         self.graph.update_state(self._cfg(sid), {
             "session_id": sid, "messages": [greeting], "application": {}, "errors": {}, "ambiguities": [],
             "stage": "collecting", "input_kind": "text", "confirmed": False, "model_output": None,

@@ -5,7 +5,8 @@ The LLM does two things only:
      note anything ambiguous, and detect a yes/no confirmation.
   2. `reply`   – write the next conversational message (clarifications,
      next questions, answering side questions).
-It never sees or makes the credit decision.
+It never sees or makes the credit decision, and never sees PII in clear text:
+callers wrap it in `chat.pii.PIISafeLLM`, which redacts prompts and restores outputs.
 """
 from __future__ import annotations
 
@@ -45,13 +46,17 @@ EXTRACT_SYSTEM = """You extract loan-application data from a chat between ABC Cr
 Only extract values the applicant actually stated in their latest message (they may also be correcting an earlier answer).
 Map free-text answers to the listed codes where a description gives codes (e.g. "I run a shop" -> SEP).
 Keep numbers as the applicant gave them (e.g. "25k", "1.2 lakh"). Never guess or invent values; use null.
-If something is ambiguous, leave the field null and describe the ambiguity."""
+If something is ambiguous, leave the field null and describe the ambiguity.
+Personal details (name, email, phone, IDs) have been replaced by placeholders such as [NAME_1], [EMAIL_1],
+[PHONE_1]. For the Name, Email and Phone fields return the placeholder exactly as written; never invent a value."""
 
 REPLY_SYSTEM = """You are the friendly assistant of ABC Credit, an NBFC, helping a customer apply for a two-wheeler loan by chat.
 Style: warm, brief (1-3 short sentences), plain language, no markdown headings. Ask at most two things per message.
 You only gather information and explain the process. You must NEVER say or hint whether the loan will be approved
 or declined, and never estimate eligibility – a separate credit model makes that decision.
-Do not ask for name, phone, email, PAN, Aadhaar or bank details."""
+Name, email and mobile number are collected on the first form; never ask for PAN, Aadhaar or bank details.
+Personal details appear as placeholders such as [NAME_1], [EMAIL_1] or [PHONE_1]. You may use a placeholder
+exactly as written (e.g. "Thanks, [NAME_1]!") but never guess, spell out or alter what it stands for."""
 
 
 class GeminiLLM:

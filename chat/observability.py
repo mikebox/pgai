@@ -6,7 +6,7 @@ What gets traced, per applicant turn (one trace, grouped into a LangSmith thread
   * the ML model call (features, probability, decision, latency)
 
 All trace payloads pass through the same PII masker as the audit log before
-leaving the machine (phone, email, PAN, Aadhaar, long digit runs, pincodes).
+leaving the machine (name, phone, email, PAN, Aadhaar, long digit runs, pincodes).
 """
 from __future__ import annotations
 
@@ -22,7 +22,10 @@ def enabled() -> bool:
     return os.getenv("LANGSMITH_TRACING", "").lower() == "true" and bool(os.getenv("LANGSMITH_API_KEY"))
 
 
-def _mask(value: str, _path) -> str:
+def _mask(value: str, path) -> str:
+    key = str(path[-1]) if path else ""
+    if (m := audit.mask_value(key, value)) is not None:
+        return m
     return audit.mask_text(value)
 
 

@@ -2,7 +2,8 @@
 
 Logs every user input, extracted answer, model feature values, score and
 decision. Free text is masked (phone numbers, emails, long digit runs, ID-like
-tokens); pincode is truncated to its first 3 digits.
+tokens); pincode is truncated to its first 3 digits; name, email and phone
+fields are partially masked (initials, domain, last 4 digits).
 """
 from __future__ import annotations
 
@@ -25,20 +26,38 @@ _PATTERNS = [
 ]
 
 
-def mask_text(text: str) -> str:
+def mask_text(text: str, known: dict | None = None) -> str:
+    """`known`: the applicant's collected answers, so their own name is masked wherever it appears."""
+    from .pii import redact_text      # names typed in free text ("my name is …"), emails, phones, IDs
+    text = redact_text(text, known)
     for pat, repl in _PATTERNS:
         text = pat.sub(repl, text)
     return text
 
 
+def mask_value(key: str, v):
+    """Partial mask for one PII field value (None if the key isn't a PII field)."""
+    k, s = key.lower(), str(v)
+    if k == "pincode":
+        return s[:3] + "***"
+    if k == "name":
+        return " ".join(p[:1] + "***" for p in s.split())
+    if k == "email":
+        user, _, domain = s.partition("@")
+        return user[:1] + "***@" + domain
+    if k == "phone":
+        return "******" + re.sub(r"\D", "", s)[-4:]
+    return None
+
+
 def mask_fields(d: dict) -> dict:
-    """Mask pincodes (any key spelled 'pincode', at any depth) to their first 3 digits."""
+    """Mask PII fields (pincode, name, email, phone – any depth) and free text in the rest."""
     out = {}
     for k, v in d.items():
         if isinstance(v, dict):
             out[k] = mask_fields(v)
-        elif k.lower() == "pincode" and v:
-            out[k] = str(v)[:3] + "***"
+        elif v and (m := mask_value(k, v)) is not None:
+            out[k] = m
         else:
             out[k] = v
     return out

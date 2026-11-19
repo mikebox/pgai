@@ -297,6 +297,9 @@
 </div>
 
 <script>
+// Folder the app is served from: "" at the domain root, "/loan" under pgpem.in/loan/ (works for both).
+const BASE = location.pathname.replace(/\/(index\.html|admin(\/report)?)?\/?$/, "");
+document.querySelectorAll('a[href^="/"]').forEach(a => a.setAttribute("href", BASE + a.getAttribute("href")));
 const $ = id => document.getElementById(id);
 const h = (tag, attrs = {}, ...kids) => {
   const el = document.createElement(tag);
@@ -575,7 +578,7 @@ async function exchange(payload, shownText) {
   userText(shownText);
   const t = add(h('div', { class: 'typing', 'aria-label': 'Assistant is typing' }, h('i'), h('i'), h('i')));
   try {
-    const r = await post('/api/message', { session_id: sid, ...payload });
+    const r = await post(BASE + '/api/message', { session_id: sid, ...payload });
     t.remove(); render(r);
   } catch (err) {
     t.remove(); botText('Sorry, something went wrong: ' + err.message);
@@ -615,7 +618,7 @@ async function begin() {                 // the session (and its timer) starts o
   const btn = $('begin');
   btn.disabled = true; $('start-error').hidden = true;
   try {
-    const r = await post('/api/session');
+    const r = await post(BASE + '/api/session');
     sid = r.session_id;
     document.body.classList.remove('on-landing');
     render(r);

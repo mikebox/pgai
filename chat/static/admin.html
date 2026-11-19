@@ -217,6 +217,9 @@
 </aside>
 
 <script>
+// Folder the app is served from: "" at the domain root, "/loan" under pgpem.in/loan/ (works for both).
+const BASE = location.pathname.replace(/\/(index\.html|admin(\/report)?)?\/?$/, "");
+document.querySelectorAll('a[href^="/"]').forEach(a => a.setAttribute("href", BASE + a.getAttribute("href")));
 const STATUS = {
   approved: "Approved", declined: "Declined", review: "Awaiting submit",
   in_progress: "In progress", not_started: "Not started", abandoned: "Abandoned",
@@ -268,9 +271,9 @@ function qs() {
 let loading = 0;
 async function load() {
   const my = ++loading;
-  history.replaceState(null, "", "/admin" + (qs() ? "?" + qs() : "") + location.hash);
+  history.replaceState(null, "", BASE + "/admin" + (qs() ? "?" + qs() : "") + location.hash);
   try {
-    const r = await fetch("/api/admin/applications?" + qs() + "&tz=" + new Date().getTimezoneOffset());
+    const r = await fetch(BASE + "/api/admin/applications?" + qs() + "&tz=" + new Date().getTimezoneOffset());
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || r.statusText);
     if (my !== loading) return;
@@ -371,7 +374,7 @@ async function openDetail(id) {
   $("d-id").textContent = id; $("d-title").textContent = "Application"; $("d-body").innerHTML = `<p class="muted">Loading…</p>`;
   if (location.hash !== "#" + id) history.replaceState(null, "", location.pathname + location.search + "#" + id);
   try {
-    const r = await fetch("/api/admin/applications/" + encodeURIComponent(id));
+    const r = await fetch(BASE + "/api/admin/applications/" + encodeURIComponent(id));
     const a = await r.json();
     if (!r.ok) throw new Error(a.error || r.statusText);
     renderDetail(a);

@@ -153,6 +153,9 @@
 <div class="lightbox" id="lb"><button class="x" id="lb-x" aria-label="Close">×</button><img id="lb-img" alt=""><div class="cap" id="lb-cap"></div></div>
 
 <script>
+// Folder the app is served from: "" at the domain root, "/loan" under pgpem.in/loan/ (works for both).
+const BASE = location.pathname.replace(/\/(index\.html|admin(\/report)?)?\/?$/, "");
+document.querySelectorAll('a[href^="/"]').forEach(a => a.setAttribute("href", BASE + a.getAttribute("href")));
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const pct = (x, d = 1) => x == null ? "—" : (x * 100).toFixed(d) + "%";
@@ -171,7 +174,7 @@ const SECTIONS = { all: "All", data: "Data analysis", features: "Feature selecti
 async function main() {
   let r;
   try {
-    const res = await fetch("/api/admin/report");
+    const res = await fetch(BASE + "/api/admin/report");
     r = await res.json();
     if (!res.ok) throw new Error(r.error || res.statusText);
   } catch (e) {
@@ -314,8 +317,8 @@ async function main() {
   const secs = ["all", ...new Set(r.figures.map((f) => f.section))];
   h += `<section id="figures"><h2>Figures</h2><p class="lead">Charts produced by the training notebooks. Click one to enlarge.</p>
     <div class="filter" id="fig-filter">${secs.map((s, i) => `<button data-s="${s}" class="${i ? "" : "on"}">${SECTIONS[s] || s}</button>`).join("")}</div>
-    <div class="figs" id="figs">${r.figures.map((f) => `<button class="fig" data-s="${f.section}" data-src="/reports/figures/${encodeURIComponent(f.file)}" data-cap="${esc(f.title + (f.caption ? " — " + f.caption : ""))}">
-      <img loading="lazy" src="/reports/figures/${encodeURIComponent(f.file)}" alt="${esc(f.title)}"><div><b>${esc(f.title)}</b><p>${esc(f.caption)}</p></div></button>`).join("")}</div>
+    <div class="figs" id="figs">${r.figures.map((f) => `<button class="fig" data-s="${f.section}" data-src="${BASE}/reports/figures/${encodeURIComponent(f.file)}" data-cap="${esc(f.title + (f.caption ? " — " + f.caption : ""))}">
+      <img loading="lazy" src="${BASE}/reports/figures/${encodeURIComponent(f.file)}" alt="${esc(f.title)}"><div><b>${esc(f.title)}</b><p>${esc(f.caption)}</p></div></button>`).join("")}</div>
   </section>`;
 
   // ---- full report ----

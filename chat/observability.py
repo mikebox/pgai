@@ -64,6 +64,18 @@ def trace_context(session_id: str):
         yield
 
 
+@contextmanager
+def tracing_disabled():
+    """Force tracing off (even if LANGSMITH_TRACING=true in the env) – used for most-secure sessions."""
+    try:
+        from langsmith import tracing_context
+    except ImportError:
+        yield
+        return
+    with tracing_context(enabled=False):
+        yield
+
+
 def record_llm_usage(usage) -> None:
     """Attach Gemini token counts to the current LangSmith LLM run."""
     if not enabled() or usage is None:

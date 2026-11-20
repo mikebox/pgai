@@ -19,17 +19,19 @@ the process and restored in the output. State is persisted per session by the ch
 from __future__ import annotations
 
 import operator
+import threading
 import uuid
+from datetime import date, datetime
 from typing import Annotated, Literal, TypedDict
 
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
-from . import audit, observability
+from . import audit, config, observability
 from .pii import PIISafeLLM
 from .fields import (FIELDS, build_model_input, cross_validate, display, field_ui,
                      fields_to_collect, groups_for)
-from .llm import LLM, GeminiLLM
+from .llm import LLM, GeminiLLM, OllamaLLM
 from .ml_model import LoanModel, load_model, timed_predict
 
 Stage = Literal["collecting", "confirming", "done"]
@@ -156,6 +158,9 @@ def build_graph(llm: LLM, model: LoanModel, checkpointer=None):
             # Form path: no LLM needed – errors are shown inline on the form.
             if errors:
                 text = "Almost there – please check the highlighted answer" + ("s" if len(errors) > 1 else "") + "."
+            elif state["messages"][-1].get("source") == "id":
+                text = ("I've filled in what I could read from your ID card. Please check it"
+                        + (" and fill in the rest." if form["type"] == "group" else " and submit."))
             else:
                 text = f"Thanks! Next up: {form['title'].lower()}."
             return {"messages": [{"role": "assistant", "content": text, "form": form}]}
@@ -230,43 +235,133 @@ def build_graph(llm: LLM, model: LoanModel, checkpointer=None):
     return g.compile(checkpointer=checkpointer or InMemorySaver())
 
 
-class LoanChatbot:
-    """Small façade used by the UIs: one instance serves many sessions."""
+Mode = Literal["standard", "secure"]
+MODES: tuple[Mode, ...] = ("standard", "secure")
 
-    def __init__(self, llm: LLM | None = None, model: LoanModel | None = None):
+
+def _age_from_dob(dob: str) -> str:
+    """Age in whole years, computed in code (not by the model). '' if the date can't be read."""
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y"):
+        try:
+            d = datetime.strptime(dob.strip(), fmt).date()
+            break
+        except ValueError:
+            continue
+    else:
+        return ""
+    t = date.today()
+    return str(t.year - d.year - ((t.month, t.day) < (d.month, d.day)))
+
+
+class LoanChatbot:
+    """Small façade used by the UIs: one instance serves many sessions.
+
+    Each session runs in a fixed mode chosen when it starts:
+      - "standard": Gemini (cloud) for the conversation.
+      - "secure":   local Gemma 4 via Ollama; nothing is sent to a cloud LLM and LangSmith tracing is off.
+    Both graphs share one checkpointer; each LLM is created only when a session first needs it."""
+
+    def __init__(self, llm: LLM | None = None, model: LoanModel | None = None, secure_llm: LLM | None = None):
         self.model = model or load_model()
-        self.llm = llm or GeminiLLM()
-        self.graph = build_graph(self.llm, self.model)
+        self._llms: dict[str, LLM | None] = {"standard": llm, "secure": secure_llm or llm}
+        self._graphs: dict[str, object] = {}
+        self._modes: dict[str, Mode] = {}
+        self._checkpointer = InMemorySaver()
+        self._lock = threading.Lock()
         self.collect = fields_to_collect(self.model.required_fields)
         self.n_questions = len(self.collect)
         self.n_steps = len(groups_for(self.collect))
 
-    def new_session(self) -> tuple[str, dict]:
+    def _graph(self, mode: Mode):
+        with self._lock:
+            if mode not in self._graphs:
+                llm = self._llms.get(mode) or (OllamaLLM() if mode == "secure" else GeminiLLM())
+                self._llms[mode] = llm
+                self._graphs[mode] = build_graph(llm, self.model, self._checkpointer)
+            return self._graphs[mode]
+
+    def mode(self, session_id: str) -> Mode:
+        return self._modes.get(session_id, "standard")
+
+    def llm_name(self, mode: Mode) -> str:
+        llm = self._llms.get(mode)
+        return getattr(llm, "model", None) or (config.SECURE_LLM_MODEL if mode == "secure" else config.LLM_MODEL)
+
+    def new_session(self, mode: Mode = "standard") -> tuple[str, dict]:
+        if mode not in MODES:
+            raise ValueError(f"unknown mode {mode!r}; expected one of {MODES}")
         sid = uuid.uuid4().hex
+        graph = self._graph(mode)
+        self._modes[sid] = mode
         greeting = {"role": "assistant", "form": _group_form(groups_for(self.collect), {}, {}), "content":
                     f"Let's get started – {self.n_questions} quick questions in {self.n_steps} short steps. "
-                    "First, your contact details. You can also type your answers or ask me anything below."}
-        self.graph.update_state(self._cfg(sid), {
+                    "First, your contact details. " + (
+                        "You can also type or speak your answers, upload a photo of your ID card to fill in your "
+                        "name, age, pincode, email and phone, or ask me anything below." if mode == "secure" else
+                        "You can also type your answers or ask me anything below.")}
+        graph.update_state(self._cfg(sid), {
             "session_id": sid, "messages": [greeting], "application": {}, "errors": {}, "ambiguities": [],
             "stage": "collecting", "input_kind": "text", "confirmed": False, "model_output": None,
         })
-        audit.log_event(sid, "session_start", model=self.model.name, model_version=self.model.version)
+        audit.log_event(sid, "session_start", model=self.model.name, model_version=self.model.version,
+                        mode=mode, llm=self.llm_name(mode))
         return sid, greeting
 
     def send(self, session_id: str, text: str | None = None, form: dict | None = None,
-             action: str | None = None) -> dict:
+             action: str | None = None, source: str | None = None, shown: str | None = None) -> dict:
         """Send one input: free text, a submitted form {field: value}, or action='submit'. Returns the bot message."""
         if action == "submit":
             msg = {"role": "user", "content": "Submit application", "action": "submit"}
         elif form is not None:
-            shown = "; ".join(f"{FIELDS[k].label.capitalize()}: {v}" for k, v in form.items() if k in FIELDS and v)
-            msg = {"role": "user", "content": shown or "(empty form)", "form": form}
+            shown = shown or "; ".join(f"{FIELDS[k].label.capitalize()}: {v}" for k, v in form.items() if k in FIELDS and v)
+            msg = {"role": "user", "content": shown or "(empty form)", "form": form, **({"source": source} if source else {})}
         else:
             msg = {"role": "user", "content": (text or "").strip()}
-        cfg = {**self._cfg(session_id), **observability.run_config(session_id)}
-        with observability.trace_context(session_id):
-            state = self.graph.invoke({"messages": [msg]}, cfg)
+        mode = self.mode(session_id)
+        graph = self._graph(mode)
+        if mode == "secure":   # keep everything on this machine: no LangSmith tracing either
+            with observability.tracing_disabled():
+                state = graph.invoke({"messages": [msg]}, self._cfg(session_id))
+        else:
+            cfg = {**self._cfg(session_id), **observability.run_config(session_id)}
+            with observability.trace_context(session_id):
+                state = graph.invoke({"messages": [msg]}, cfg)
         return state["messages"][-1]
+
+    # ---- voice and ID-card input: most-secure mode only (local Gemma, nothing leaves this machine) ----
+    def _secure_llm(self, session_id: str):
+        if not self.state(session_id):
+            raise KeyError("unknown session")
+        if self.mode(session_id) != "secure":
+            raise PermissionError("voice and ID-card input are only available in most secure mode")
+        if self.state(session_id).get("stage") == "done":
+            raise PermissionError("this application has already been submitted")
+        self._graph("secure")
+        return self._llms["secure"]
+
+    def transcribe(self, session_id: str, wav: bytes) -> str:
+        """Speech -> text. The text goes back to the applicant to check and send; it isn't sent automatically."""
+        text = self._secure_llm(session_id).transcribe(wav)
+        audit.log_event(session_id, "voice_input", audio_kb=round(len(wav) / 1024), chars=len(text))
+        return text
+
+    def read_id(self, session_id: str, image: bytes) -> tuple[dict, list[str]]:
+        """Read name / age / pincode / email / phone from an ID-card photo and apply them like a submitted form.
+        The image is processed in memory and never stored or logged. Returns (bot message, fields filled)."""
+        r = self._secure_llm(session_id).read_id(image)
+        values = {"Name": r["full_name"], "Age": _age_from_dob(r["date_of_birth"]) or r.get("age", ""),
+                  "Pincode": r["pincode"], "Email": r.get("email", ""), "Phone": r.get("phone", "")}
+        values = {k: v for k, v in values.items() if v and k in self.collect} if r["is_id_document"] else {}
+        audit.log_event(session_id, "id_upload", is_id_document=r["is_id_document"], fields_read=sorted(values))
+        if not values:
+            why = ("That doesn't look like an ID card" if not r["is_id_document"]
+                   else "I couldn't read the details on that ID card")
+            msg = {"role": "assistant", "content": why + ". You can try a clearer photo, or just type your answers."}
+            self._graph("secure").update_state(self._cfg(session_id), {"messages": [
+                {"role": "user", "content": "(uploaded an image)", "source": "id"}, msg]}, as_node="ask")
+            return msg, []
+        shown = "Uploaded ID card – " + ", ".join(FIELDS[k].label for k in values)
+        return self.send(session_id, form=values, source="id", shown=shown), sorted(values)
 
     def progress(self, session_id: str) -> dict:
         s = self.state(session_id)
@@ -277,7 +372,8 @@ class LoanChatbot:
                 "steps": len(groups), "steps_done": done, "stage": stage}
 
     def state(self, session_id: str) -> ChatState:
-        return self.graph.get_state(self._cfg(session_id)).values
+        graph = self._graphs.get(self.mode(session_id)) or next(iter(self._graphs.values()), None)
+        return graph.get_state(self._cfg(session_id)).values if graph is not None else {}
 
     @staticmethod
     def _cfg(sid: str) -> dict:

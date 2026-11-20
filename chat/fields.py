@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Callable, Literal
 
+from . import vehicles
 from .config import PROJECT_ROOT
 
 # Validator: raw value -> (clean value, error message or None)
@@ -47,21 +48,46 @@ class DerivedField:
 
 
 # ---- validators ----------------------------------------------------------------
+_UNITS = {"k": 1e3, "thousand": 1e3, "hundred": 1e2, "l": 1e5, "lakh": 1e5, "lakhs": 1e5, "lac": 1e5,
+          "lacs": 1e5, "crore": 1e7, "crores": 1e7, "cr": 1e7}
+_ONES = {w: i for i, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve thirteen "
+                                     "fourteen fifteen sixteen seventeen eighteen nineteen".split())}
+_TENS = {w: 10 * i for i, w in enumerate("_ _ twenty thirty forty fifty sixty seventy eighty ninety".split()) if i >= 2}
+_UNIT_RE = "|".join(sorted(_UNITS, key=len, reverse=True))
+
+
+def _words_to_digits(s: str) -> str:
+    """'fifty five thousand' -> '55 thousand' (number words below 100, enough for amounts and ages)."""
+    words_t, words_o = "|".join(_TENS), "|".join(_ONES)
+    s = re.sub(rf"\b(?:({words_t})(?:[\s-]+({words_o}))?|({words_o}))\b",
+               lambda m: str(_TENS.get(m.group(1), 0) + _ONES.get(m.group(2) or "", 0)) if m.group(1)
+               else str(_ONES[m.group(3)]), s)
+    return s
+
+
 def _number(v: Any) -> float | None:
+    """Numbers as people write them: 35000, 35,000, 35k, 1.5 lakh, 1 lakh 50 thousand, one lakh fifty thousand,
+    ₹2,00,000/-. Returns None if the text isn't just an amount."""
     if v is None:
         return None
     if isinstance(v, (int, float)):
         return float(v)
-    s = str(v).lower().replace(",", "").replace("₹", "").replace("rs", "").strip()
-    m = re.fullmatch(r"([\d.]+)\s*(k|thousand|l|lakh|lakhs|lac)?", s)
-    if not m:
-        return None
-    try:
-        n = float(m.group(1))
-    except ValueError:
-        return None
-    mult = {"k": 1e3, "thousand": 1e3, "l": 1e5, "lakh": 1e5, "lakhs": 1e5, "lac": 1e5}.get(m.group(2) or "", 1)
-    return n * mult
+    s = str(v).lower().replace(",", "").replace("₹", " ").replace("/-", " ")
+    s = re.sub(r"\b(?:rs|inr|rupees?|only|and|approx|around|about)\b\.?", " ", s)
+    s = _words_to_digits(s)
+    s = re.sub(r"\s+", " ", s).strip()
+    parts = re.findall(rf"(\d+(?:\.\d+)?)\s*({_UNIT_RE})?(?![a-z])", s)
+    if not parts or re.sub(rf"(\d+(?:\.\d+)?)\s*({_UNIT_RE})?(?![a-z])", "", s).strip():
+        return None                                     # leftover words -> not a plain amount
+    total = 0.0
+    for num, unit in parts:
+        try:
+            total += float(num) * _UNITS.get(unit, 1)
+        except ValueError:
+            return None
+    if len(parts) > 1 and any(not u for _, u in parts[:-1]):
+        return None                                     # "35 40" is two numbers, not one amount
+    return total
 
 
 def _age(v):
@@ -102,9 +128,13 @@ def _choice(options: Options):
     return check
 
 
-def _text(v):
+def _vehicle(v):
+    """Map what the applicant typed or said to the closest known model name (see chat/vehicles.py),
+    because the credit model looks vehicles up by exact name. An unrecognised vehicle is kept as typed."""
     s = str(v or "").strip()
-    return (s, None) if len(s) >= 2 else (None, "Please give the vehicle make and model.")
+    if len(s) < 2:
+        return None, "Please give the vehicle make and model."
+    return vehicles.match(s, vehicle_models()) or s, None
 
 
 def _name(v):
@@ -220,7 +250,7 @@ FIELDS: dict[str, FieldSpec] = {f.name: f for f in [
               question="Are you repaying any loan or EMI right now?", kind="choice", options=PAST_LOANS),
     FieldSpec("Model_Description", "vehicle model",
               "The two-wheeler being financed: make and model as the user names it, e.g. 'TVS Jupiter 125', 'Apache RTR 160'.",
-              _text, question="Which vehicle are you buying?", placeholder="Start typing, e.g. Jupiter, Raider, Apache",
+              _vehicle, question="Which vehicle are you buying?", placeholder="Start typing, e.g. Jupiter, Raider, Apache",
               suggestions=vehicle_models),
     FieldSpec("Vehicle_Price", "vehicle price", "On-road price of the vehicle in INR (used to compute LTV).",
               _money("Vehicle price", 10_000, 1_500_000),

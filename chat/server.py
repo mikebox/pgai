@@ -3,25 +3,31 @@ Run from the project root:   python -m chat.server      then open http://localho
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import os
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qsl, unquote, urlsplit
 
-from . import admin, audit
+from . import admin, audit, vehicles
+from .fields import vehicle_models, vehicle_prices
 from .config import CHAT_DIR, DECISION_SLA_S
-from .graph import LoanChatbot
+from .graph import MODES, LoanChatbot
 
 INDEX = CHAT_DIR / "static" / "index.html"
 ADMIN = CHAT_DIR / "static" / "admin.html"
 REPORT = CHAT_DIR / "static" / "report.html"
+MAX_BODY = 10 * 1024 * 1024         # voice clips / ID photos are sent as base64 JSON
 bot: LoanChatbot | None = None
 _started: dict[str, float] = {}      # session_id -> wall-clock start (for the total-time readout)
 
 
 def _status(sid: str) -> dict:
-    return {**bot.progress(sid), "placeholder": bot.model.name == "placeholder"}
+    mode = bot.mode(sid)   # fixed when the session starts; later requests can't change it
+    return {**bot.progress(sid), "placeholder": bot.model.name == "placeholder",
+            "mode": mode, "llm": bot.llm_name(mode)}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -42,6 +48,10 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/api/admin/applications/"):
                 d = admin.detail(bot.collect, unquote(path.rsplit("/", 1)[1]))
                 return self._json(200, d) if d else self._json(404, {"error": "application not found"})
+            if path == "/api/vehicle-match":   # live hint in the vehicle form: closest known model + typical price
+                q = dict(parse_qsl(url.query)).get("q", "")[:120]
+                m = vehicles.match(q, vehicle_models())
+                return self._json(200, {"match": m, "price": vehicle_prices().get(m) if m else None})
             if path == "/api/admin/report":
                 return self._json(200, admin.report(bot.collect))
             if path.startswith("/reports/figures/"):
@@ -67,9 +77,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
-            data = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+            size = int(self.headers.get("Content-Length", 0))
+            if size > MAX_BODY:
+                return self._json(413, {"error": "upload too large (max 10 MB)"})
+            data = json.loads(self.rfile.read(size) or b"{}")
+            if self.path in ("/api/voice", "/api/id"):
+                return self._media(data)
             if self.path == "/api/session":
-                sid, greeting = bot.new_session()
+                mode = data.get("mode", "standard")
+                if mode not in MODES:
+                    return self._json(400, {"error": f"mode must be one of {list(MODES)}"})
+                sid, greeting = bot.new_session(mode)
                 _started[sid] = time.time()
                 return self._json(200, {"session_id": sid, "message": greeting, **_status(sid)})
             if self.path == "/api/message":
@@ -102,6 +120,28 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(404, {"error": "not found"})
         except Exception as e:  # keep the server up; surface the error to the page
             return self._json(500, {"error": f"{type(e).__name__}: {e}"})
+
+    def _media(self, data: dict):
+        """Voice and ID-card input – most-secure sessions only, handled by the local model.
+        Audio/images are decoded in memory and never written to disk or the audit log."""
+        sid = data.get("session_id")
+        if not sid or not bot.state(sid):
+            return self._json(400, {"error": "unknown session – start a new application"})
+        if bot.mode(sid) != "secure":
+            return self._json(403, {"error": "voice and ID-card input are only available in most secure mode"})
+        try:
+            blob = base64.b64decode(str(data.get("data", "")).split(",", 1)[-1], validate=True)
+        except (binascii.Error, ValueError):
+            return self._json(400, {"error": "could not decode the upload"})
+        if not blob:
+            return self._json(400, {"error": "empty upload"})
+        try:
+            if self.path == "/api/voice":
+                return self._json(200, {"text": bot.transcribe(sid, blob)})
+            msg, filled = bot.read_id(sid, blob)
+        except PermissionError as e:
+            return self._json(403, {"error": str(e)})
+        return self._json(200, {"message": msg, "filled": filled, **_status(sid)})
 
     def log_message(self, fmt, *args):  # quiet access log (audit log covers the content)
         pass

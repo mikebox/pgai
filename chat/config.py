@@ -22,6 +22,14 @@ LLM_MODEL = os.getenv("CHAT_LLM_MODEL", "gemini-4-argon")        # Gemini 4 Argo
 LLM_THINKING_LEVEL = os.getenv("CHAT_LLM_THINKING", "low")         # minimal | low | medium | high – low keeps chat replies fast
 LLM_MAX_TOKENS = int(os.getenv("CHAT_LLM_MAX_TOKENS", "4000"))
 
+# ---- Most-secure mode: a local model via Ollama, nothing leaves this machine -------
+# Chosen per application on the landing page and fixed for that session.
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+if not OLLAMA_HOST.startswith("http"):
+    OLLAMA_HOST = "http://" + OLLAMA_HOST
+SECURE_LLM_MODEL = os.getenv("CHAT_SECURE_LLM_MODEL", "gemma4:e4b")
+SECURE_LLM_TIMEOUT_S = float(os.getenv("CHAT_SECURE_LLM_TIMEOUT_S", "120"))
+
 # ---- ML model plug-in --------------------------------------------------------
 # "auto" (default)                    -> trained model in models/loan_decision_model.joblib if present, else placeholder
 # "trained"                           -> trained model (src/loan_model/predict.py LoanScorer); fail if missing

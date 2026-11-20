@@ -1,5 +1,7 @@
-"""Terminal chat.   Run from the project root:   python -m chat.cli
+"""Terminal chat.   Run from the project root:   python -m chat.cli   [--secure  (local Gemma 4 via Ollama)]
 Shows each question group; answer in free text (Gemini reads it) or type 'submit' on the review step."""
+import sys
+
 from .graph import LoanChatbot
 
 
@@ -24,7 +26,9 @@ def _print(msg: dict) -> None:
 
 def main() -> None:
     bot = LoanChatbot()
-    sid, greeting = bot.new_session()
+    mode = "secure" if "--secure" in sys.argv[1:] else "standard"
+    sid, greeting = bot.new_session(mode)
+    print(f"Mode: {mode} ({bot.llm_name(mode)})")
     _print(greeting)
     while True:
         try:

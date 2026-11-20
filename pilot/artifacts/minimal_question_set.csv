@@ -1,9 +1,0 @@
-Question,Features it feeds,AUC drop if removed (CV),AUC drop if removed (val),"Recall change if removed (val, @25% declined)",Keep?,Reason
-Pincode,"pin_district, pin_zone, tier_imputed, tier_rank",0.0237,0.0222,-3.0%,Yes,Removal alone costs 0.0237 AUC (>= 0.005)
-PAST_LOANS_ACTIVE,Is_First_Time_Borrower,0.0028,0.0047,-0.4%,Yes,"Cheap alone, but removing it on top of the others: combined loss CV 0.0035 / val 0.0090 (>= 0.005)"
-Age,"Age, Age_Band, age_above_policy",0.001,0.0035,-0.2%,Yes,"Cheap alone, but removing it on top of the others: combined loss CV 0.0017 / val 0.0074 (>= 0.005)"
-Employment_Type,"Employment_Type, is_non_earner, salary_invalid",0.0008,0.0026,+0.0%,No,"Costs < 0.005 AUC on CV and validation, alone and combined: not worth a question"
-Qualifications,Qualifications,0.0005,0.0019,-0.1%,No,"Costs < 0.005 AUC on CV and validation, alone and combined: not worth a question"
-Gender,Gender,0.0002,0.0016,+0.6%,No,Removed by fairness policy (cost only +0.0002 AUC; decline rates equal across genders)
-Resident_Type,Resident_Type,-0.0006,0.0013,+0.7%,No,"Costs < 0.005 AUC on CV and validation, alone and combined: not worth a question"
-Net_salary,"Down_Payment_to_Income, EMI_to_Income, Net_salary, Residual_Income, salary_invalid",-0.0017,-0.0002,+0.2%,No,"Costs < 0.005 AUC on CV and validation, alone and combined: not worth a question"

@@ -37,11 +37,17 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
 # After the intro phrase the first word may be lower-case; further words must be Capitalised.
 _NOT_NAMES = {"a", "an", "the", "and", "i", "my", "me", "not", "for", "about", "it", "is", "from", "here",
               "to", "regarding", "looking", "applying", "interested", "your", "our", "new", "first", "na",
-              "on", "at", "back", "later", "now", "today", "tomorrow", "please", "sir", "madam"}
+              "on", "at", "back", "later", "now", "today", "tomorrow", "please", "sir", "madam",
+              # after "I'm …": states, not names
+              "salaried", "self", "self-employed", "employed", "unemployed", "retired", "student", "working",
+              "married", "single", "fine", "good", "ok", "okay", "also", "just", "currently", "planning",
+              "buying", "trying", "sure", "ready", "done", "happy", "sorry", "using", "living", "staying",
+              "earning", "getting", "paying", "having", "going", "doing", "with", "in", "into", "very", "still",
+              "farmer", "pensioner", "shopkeeper", "tvs", "jupiter", "apache", "ntorq", "raider", "indian"}
 _NAME_INTRO = re.compile(
     r"(?:(?i:\bmy name is|\bmy name's|\bname\s*[:=-]|\bcall me|\bi am called|\bi'm called)\s+"
     r"([^\W\d_][\w'.-]*(?:\s+[A-Z][\w'.-]*){0,3})"
-    r"|(?i:\bthis is)\s+([A-Z][\w'.-]*(?:\s+[A-Z][\w'.-]*){0,3}))")
+    r"|(?i:\bthis is|\bi am|\bi'm|\bi’m|\bim)\s+([A-Z][\w'.-]*(?:\s+[A-Z][\w'.-]*){0,3}))")
 _TOKEN = re.compile(r"\[(NAME|EMAIL|PHONE|PAN|AADHAAR|ACCOUNT)_\d+\]")
 
 
@@ -148,13 +154,23 @@ class PIISafeLLM:
         r = self.redactor
         tokens = {k: r.token_for(k) for k in CONTACT_FIELDS}
         safe_collected = {k: (tokens[k] or "[REDACTED]") if k in CONTACT_FIELDS else v for k, v in collected.items()}
-        ex = self.llm.extract(r.redact(transcript), safe_collected, wanted)
+        redacted = r.redact(transcript)
+        ex = self.llm.extract(redacted, safe_collected, wanted)
         restored = {k: r.restore(v) for k, v in ex.fields.model_dump().items()}
         # A contact value that isn't one of our placeholders was never shown to the LLM, so it's invented.
         for k in CONTACT_FIELDS:
             v = ex.fields.model_dump().get(k)
             if v and not _TOKEN.fullmatch(str(v).strip()):
                 restored[k] = None
+        # The model sometimes leaves a contact field empty even though the applicant just gave it
+        # ("my name is Jay, email jay@test.com …"). The redactor already knows what each placeholder stands for,
+        # so if the latest applicant message holds exactly one placeholder of that kind, use it.
+        latest = redacted.rsplit("Applicant:", 1)[-1]
+        for k, kind in (("Name", "NAME"), ("Email", "EMAIL"), ("Phone", "PHONE")):
+            if k in CONTACT_FIELDS and k in wanted and not restored.get(k):
+                toks = set(re.findall(rf"\[{kind}_\d+\]", latest))
+                if len(toks) == 1:
+                    restored[k] = r.restore(toks.pop())
         return ex.model_copy(update={"fields": type(ex.fields)(**restored),
                                      "ambiguities": [r.restore(a) for a in ex.ambiguities]})
 

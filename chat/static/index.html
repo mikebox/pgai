@@ -185,10 +185,22 @@
   .composer:focus-within { border-color: #c4c0b7; }
   .composer textarea { flex: 1; min-width: 0; resize: none; border: 0; outline: none; background: transparent; font: inherit;
                        font-size: 15px; line-height: 1.5; padding: 6px 0; max-height: 140px; color: var(--text); }
-  .composer textarea::placeholder { color: var(--text-3); }
+  .composer textarea::placeholder { color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .send { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; display: grid; place-items: center;
           background: var(--accent); color: #fff; transition: background .15s, opacity .15s; }
   .send:hover { background: var(--accent-hover); }
+  .tool { display: none; flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; background: transparent;
+          color: var(--text-2); place-items: center; position: relative; transition: background .15s, color .15s; }
+  body.secure-mode .tool { display: grid; }
+  .tool:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+  .tool:disabled { color: var(--line-strong); cursor: default; }
+  .tool svg { width: 18px; height: 18px; }
+  .tool.recording { background: var(--err-soft); color: var(--err); }
+  .tool.recording::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid var(--err);
+                           opacity: .5; animation: pulse 1.2s ease-out infinite; }
+  @keyframes pulse { from { transform: scale(.9); opacity: .6; } to { transform: scale(1.25); opacity: 0; } }
+  .rec-time { display: none; align-self: center; font: 500 12.5px/1 var(--mono); color: var(--err); flex: none; }
+  .composer.recording .rec-time { display: block; }
   .send:disabled { background: var(--line); color: var(--text-3); cursor: default; }
   .send svg { width: 16px; height: 16px; }
   .foot-note { max-width: var(--col); margin: 8px auto 0; text-align: center; font-size: 11.5px; color: var(--text-3); }
@@ -210,6 +222,17 @@
   .cta:disabled { opacity: .7; cursor: default; transform: none; }
   .cta svg { width: 16px; height: 16px; transition: transform .15s; }
   .cta:hover svg { transform: translateX(2px); }
+  .cta-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .cta.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); box-shadow: var(--shadow); }
+  .cta.secondary:hover { background: var(--hover); box-shadow: var(--shadow-lg); }
+  .cta.secondary:hover svg { transform: none; }
+  .modes-note { font-size: 12.5px; color: var(--text-3); margin: 12px auto 0; max-width: 470px; line-height: 1.5; }
+  .modes-note b { color: var(--text-2); font-weight: 550; }
+  .mode-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 550; border-radius: 999px;
+                padding: 3px 10px 3px 8px; border: 1px solid var(--line); color: var(--text-2); background: var(--subtle); white-space: nowrap; cursor: default; }
+  .mode-badge svg { width: 12px; height: 12px; }
+  .mode-badge.secure { color: var(--ok); background: var(--ok-soft); border-color: #cfe6d7; }
+  body.on-landing .mode-badge { display: none; }
   .cta-note { font-size: 12.5px; color: var(--text-3); margin-top: 12px; }
   .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 44px 0 0; text-align: left; }
   .feature { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: var(--surface); }
@@ -227,6 +250,8 @@
     .landing { align-items: flex-start; padding-top: 40px; }
     .steps .label { display: none; }
     .new .t { display: none; }
+    .mode-badge .t { display: none; }
+    .cta-row .cta { width: 100%; justify-content: center; }
     .new { padding: 6px; }
     .card { padding: 16px 14px 14px; border-radius: 14px; }
     .opts.cols-2 { grid-template-columns: 1fr; }
@@ -244,6 +269,7 @@
       <span class="mark" aria-hidden="true">A</span>
       ABC Credit
     </div>
+    <span class="mode-badge" id="mode-badge" hidden></span>
     <div class="steps" id="steps" aria-live="polite"></div>
     <button class="new" id="restart" title="New application">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -257,10 +283,17 @@
     <div class="eyebrow">Two-wheeler loans</div>
     <h1 id="hero-title">Your loan decision,<br>in about 2 minutes</h1>
     <p class="sub">Answer a few quick questions about you and the vehicle you're buying. You'll get a decision as soon as you submit.</p>
-    <button class="cta" id="begin">
-      Start application
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
+    <div class="cta-row">
+      <button class="cta" id="begin" data-mode="standard">
+        Start application
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="cta secondary" id="begin-secure" data-mode="secure">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 7V5a4 4 0 0 1 8 0v2 M3 7h10v7H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>
+        Start in most secure mode
+      </button>
+    </div>
+    <p class="modes-note"><b>Most secure mode</b> runs the assistant on a private AI model on our own servers, so your answers never go to a cloud AI provider. You can also speak your answers or upload a photo of your ID card. Replies may be a little slower. You can't switch modes once you start.</p>
     <div class="cta-note">No documents needed at this stage</div>
     <div class="start-error" id="start-error" hidden></div>
 
@@ -288,12 +321,20 @@
 
 <div class="composer-wrap">
   <form class="composer" id="chat">
+    <button type="button" class="tool" id="id-btn" aria-label="Upload ID card photo" title="Upload ID card photo – fills in your name, age, pincode, email and phone">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4.5" width="15" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="7" cy="9" r="1.7" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4.6 13c.5-1.3 1.3-1.9 2.4-1.9s1.9.6 2.4 1.9M11.5 8.5h3.5M11.5 11h2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </button>
+    <input type="file" id="id-file" accept="image/*" hidden>
     <textarea id="input" rows="1" placeholder="Type a message or ask a question…" aria-label="Message"></textarea>
+    <span class="rec-time" id="rec-time">0:00</span>
+    <button type="button" class="tool" id="mic" aria-label="Speak your answer" title="Speak – your words appear here to check before sending">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7.2" y="2.5" width="5.6" height="9.5" rx="2.8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
     <button class="send" id="send" aria-label="Send" disabled>
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
   </form>
-  <div class="foot-note">Decisions are made by ABC Credit's credit model. Your name, email and phone are hidden from our AI assistant.</div>
+  <div class="foot-note" id="foot-note">Decisions are made by ABC Credit's credit model. Your name, email and phone are hidden from our AI assistant.</div>
 </div>
 
 <script>
@@ -417,12 +458,31 @@ function linkVehicle(qs) {
   if (model) {
     const note = h('div', { class: 'q-note', hidden: true });
     price.append(note);
-    const lookup = v => {
+    const matchNote = h('div', { class: 'q-note', hidden: true });
+    model.append(matchNote);
+    const exact = v => {
       const key = String(v || '').trim().toUpperCase();
       return Object.entries(model.field.prices).find(([m]) => m.toUpperCase() === key);
     };
-    const onModel = () => {
-      const hit = lookup(model.getValue());
+    // Not an exact name ("Jupiter BS6 Basic")? Ask the server for the closest known model – the same
+    // matcher it applies on submit – so the applicant sees what it will be recorded as.
+    let seq = 0, timer = null;
+    const lookup = async v => {
+      const hit = exact(v);
+      if (hit || String(v || '').trim().length < 2) return { hit, matched: null };
+      const my = ++seq;
+      const r = await fetch(BASE + '/api/vehicle-match?q=' + encodeURIComponent(v)).then(r => r.json()).catch(() => ({}));
+      if (my !== seq) return null;                                   // a newer keystroke won
+      return { hit: r.match && r.price ? [r.match, r.price] : null, matched: r.match };
+    };
+    const onModel = () => { clearTimeout(timer); timer = setTimeout(applyModel, exact(model.getValue()) ? 0 : 250); };
+    const applyModel = async () => {
+      const res = await lookup(model.getValue());
+      if (!res) return;
+      const { hit, matched } = res;
+      matchNote.hidden = !matched;
+      if (matched) matchNote.innerHTML = 'We’ll record this as <b></b>. Pick another model if that’s not right.';
+      if (matched) matchNote.querySelector('b').textContent = matched;
       if (hit && (autoFilled || !priceIn.value.trim())) {
         priceIn.value = fmtIN(hit[1]); autoFilled = true;
         price.classList.remove('has-error');
@@ -565,20 +625,22 @@ function status(r) {
   $('steps').replaceChildren(
     h('span', { class: 'label' }, finished ? 'Complete' : `Step ${Math.min(done + 1, r.steps)} of ${r.steps}`),
     h('span', { class: 'dots' }, Array.from({ length: r.steps }, (_, i) => h('i', { class: i < done ? 'on' : '' }))));
+  if (r.mode) modeBadge(r.mode, r.llm);
   if (r.placeholder && !document.querySelector('.notice')) $('log').prepend(h('div', { class: 'notice' }, 'Demo mode: placeholder credit model'));
   $('input').disabled = finished;
-  $('input').placeholder = finished ? 'Application complete' : 'Type a message or ask a question…';
+  $('input').placeholder = finished ? 'Application complete'
+    : r.mode === 'secure' ? 'Type, speak, or upload your ID card…' : 'Type a message or ask a question…';
   syncSend();
 }
 
-async function exchange(payload, shownText) {
+async function exchange(payload, shownText, path = '/api/message') {
   if (busy) return;
   busy = true; syncSend();
   closeCards();
   userText(shownText);
   const t = add(h('div', { class: 'typing', 'aria-label': 'Assistant is typing' }, h('i'), h('i'), h('i')));
   try {
-    const r = await post(BASE + '/api/message', { session_id: sid, ...payload });
+    const r = await post(BASE + path, { session_id: sid, ...payload });
     t.remove(); render(r);
   } catch (err) {
     t.remove(); botText('Sorry, something went wrong: ' + err.message);
@@ -587,8 +649,14 @@ async function exchange(payload, shownText) {
 
 /* ---------- composer ---------- */
 const input = $('input');
-function syncSend() { $('send').disabled = busy || finished || !input.value.trim(); }
-function autosize() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 140) + 'px'; }
+function syncSend() {
+  $('send').disabled = busy || finished || !!rec || !input.value.trim();
+  $('id-btn').disabled = busy || finished || !!rec;
+  $('mic').disabled = (busy && !rec) || finished || transcribing;
+}
+function autosize() {   // skip measuring while hidden (landing page), or the box collapses to 0px
+  input.style.height = 'auto'; if (input.scrollHeight) input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+}
 input.addEventListener('input', () => { autosize(); syncSend(); });
 input.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('chat').requestSubmit(); }
@@ -596,11 +664,118 @@ input.addEventListener('keydown', e => {
 $('chat').addEventListener('submit', e => {
   e.preventDefault();
   const text = input.value.trim();
-  if (!text || busy || finished) return;
+  if (!text || busy || finished || rec) return;
   input.value = ''; autosize(); syncSend();
   exchange({ text }, text);
 });
 window.addEventListener('scroll', () => $('top').classList.toggle('scrolled', window.scrollY > 4), { passive: true });
+
+const FOOT_DEFAULT = document.getElementById('foot-note').textContent;
+/* ---------- mode (fixed for the whole application) ---------- */
+const LOCK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 7V5a4 4 0 0 1 8 0v2 M3 7h10v7H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+const CLOUD = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 12.5h7a3 3 0 0 0 .4-6 4 4 0 0 0-7.7.9 2.6 2.6 0 0 0 .3 5.1Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+function modeBadge(mode, llm) {
+  const b = $('mode-badge'), secure = mode === 'secure';
+  b.className = 'mode-badge' + (secure ? ' secure' : '');
+  b.innerHTML = (secure ? LOCK : CLOUD) + '<span class="t">' + (secure ? 'Most secure mode' : 'Normal mode') + '</span>';
+  b.title = (secure ? 'Local model (' + llm + '): nothing is sent to a cloud AI.' : 'Cloud model (' + llm + ').')
+          + ' Mode is fixed for this application – start a new one to change it.';
+  b.setAttribute('aria-label', b.title);
+  b.hidden = false;
+  document.body.classList.toggle('secure-mode', secure);
+  $('foot-note').textContent = secure
+    ? 'Most secure mode: a private AI model on our own servers reads your messages, voice and ID photo. Nothing is stored or sent to a cloud AI.'
+    : FOOT_DEFAULT;
+}
+
+/* ---------- voice + ID card (most secure mode only; handled by the local model) ---------- */
+let rec = null, transcribing = false;
+const MAX_REC_S = 60;
+const blobToDataURL = b => new Promise((ok, err) => { const f = new FileReader(); f.onload = () => ok(f.result); f.onerror = err; f.readAsDataURL(b); });
+
+async function startRec() {
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+  } catch (e) { botText("I couldn't use your microphone – please allow microphone access, or type instead."); return; }
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const src = ctx.createMediaStreamSource(stream);
+  const proc = ctx.createScriptProcessor(4096, 1, 1);
+  const chunks = [];
+  proc.onaudioprocess = e => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  src.connect(proc); proc.connect(ctx.destination);
+  const t0 = Date.now();
+  rec = { stream, ctx, src, proc, chunks, t0, timer: setInterval(() => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    $('rec-time').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    if (s >= MAX_REC_S) stopRec();
+  }, 250) };
+  $('mic').classList.add('recording'); $('chat').classList.add('recording');
+  $('mic').setAttribute('aria-label', 'Stop recording'); $('rec-time').textContent = '0:00';
+  syncSend();
+}
+
+async function stopRec() {
+  const r = rec; if (!r) return;
+  rec = null; clearInterval(r.timer);
+  r.proc.disconnect(); r.src.disconnect(); r.stream.getTracks().forEach(t => t.stop());
+  const rate = r.ctx.sampleRate; r.ctx.close();
+  $('mic').classList.remove('recording'); $('chat').classList.remove('recording');
+  $('mic').setAttribute('aria-label', 'Speak your answer');
+  const secs = (Date.now() - r.t0) / 1000;
+  if (secs < 0.6) { syncSend(); return; }
+  transcribing = true; busy = true; syncSend();
+  const prev = input.placeholder; input.placeholder = 'Transcribing…';
+  try {
+    const wav = encodeWav(r.chunks, rate, 16000);
+    const res = await post(BASE + '/api/voice', { session_id: sid, data: await blobToDataURL(wav) });
+    if (res.text) { input.value = (input.value.trim() ? input.value.trim() + ' ' : '') + res.text; autosize(); input.focus(); }
+    else botText("I didn't catch that – please try again or type your answer.");
+  } catch (err) { botText('Sorry, voice input failed: ' + err.message); }
+  finally { transcribing = false; busy = false; input.placeholder = prev; syncSend(); }
+}
+
+function encodeWav(chunks, fromRate, toRate) {   // mono float32 -> 16 kHz 16-bit PCM WAV (what Gemma expects)
+  const n = chunks.reduce((a, c) => a + c.length, 0), all = new Float32Array(n);
+  let o = 0; for (const c of chunks) { all.set(c, o); o += c.length; }
+  const ratio = fromRate / toRate, len = Math.floor(n / ratio), pcm = new Int16Array(len);
+  for (let i = 0; i < len; i++) {          // average each window (cheap low-pass) while downsampling
+    const a = Math.floor(i * ratio), b = Math.min(n, Math.floor((i + 1) * ratio));
+    let sum = 0; for (let j = a; j < b; j++) sum += all[j];
+    const v = Math.max(-1, Math.min(1, sum / Math.max(1, b - a)));
+    pcm[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
+  }
+  const buf = new ArrayBuffer(44 + pcm.length * 2), dv = new DataView(buf);
+  const str = (p, s) => [...s].forEach((ch, i) => dv.setUint8(p + i, ch.charCodeAt(0)));
+  str(0, 'RIFF'); dv.setUint32(4, 36 + pcm.length * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, toRate, true);
+  dv.setUint32(28, toRate * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+  str(36, 'data'); dv.setUint32(40, pcm.length * 2, true);
+  new Int16Array(buf, 44).set(pcm);
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
+async function idImage(file) {                 // downscale so the upload is small and the model reads it quickly
+  const img = await createImageBitmap(file);
+  const k = Math.min(1, 1600 / Math.max(img.width, img.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff';                      // JPEG has no alpha: without this, transparent PNGs turn black
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.9);
+}
+
+$('mic').addEventListener('click', () => rec ? stopRec() : startRec());
+$('id-btn').addEventListener('click', () => $('id-file').click());
+$('id-file').addEventListener('change', async e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file || busy || finished) return;
+  let data;
+  try { data = await idImage(file); } catch { botText("I couldn't open that image – please try a JPG or PNG photo."); return; }
+  exchange({ data }, '📎 ID card photo', '/api/id');
+});
 
 /* ---------- landing ---------- */
 function showLanding() {
@@ -609,28 +784,34 @@ function showLanding() {
   $('steps').replaceChildren();
   input.value = ''; autosize(); syncSend();
   document.body.classList.add('on-landing');
-  $('begin').disabled = false;
+  $('mode-badge').hidden = true;
+  if (rec) stopRec();
+  document.body.classList.remove('secure-mode');
+  $('foot-note').textContent = FOOT_DEFAULT;
+  $('begin').disabled = $('begin-secure').disabled = false;
   window.scrollTo({ top: 0 });
   $('begin').focus({ preventScroll: true });
 }
 
-async function begin() {                 // the session (and its timer) starts only here
-  const btn = $('begin');
-  btn.disabled = true; $('start-error').hidden = true;
+async function begin(e) {                // the session (and its timer) starts only here
+  const mode = e.currentTarget.dataset.mode;   // locked server-side for this session
+  const btns = [$('begin'), $('begin-secure')];
+  btns.forEach(b => b.disabled = true); $('start-error').hidden = true;
   try {
-    const r = await post(BASE + '/api/session');
+    const r = await post(BASE + '/api/session', { mode });
     sid = r.session_id;
     document.body.classList.remove('on-landing');
     render(r);
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'instant' }));   // start at the greeting
   } catch (err) {
-    btn.disabled = false;
+    btns.forEach(b => b.disabled = false);
     $('start-error').textContent = 'Could not start: ' + err.message;
     $('start-error').hidden = false;
   }
 }
 
 $('begin').addEventListener('click', begin);
+$('begin-secure').addEventListener('click', begin);
 $('restart').addEventListener('click', showLanding);
 showLanding();
 </script>

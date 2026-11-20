@@ -183,9 +183,83 @@ def test_pii_redactor():
     assert "ravi@x.co.in" not in llm.prompts[0]
 
 
+
+def test_secure_voice_and_id(tmp_path):
+    bot, llm = _bot(tmp_path)
+    llm.transcribe = lambda wav: "I am 30 and live in 560002"
+    llm.read_id = lambda img: {"is_id_document": True, "full_name": "Ravi Kumar",
+                               "date_of_birth": "1994-03-14", "pincode": "560038"}
+
+    # Voice / ID are refused outside most-secure mode.
+    sid, _ = bot.new_session("standard")
+    for call in (lambda: bot.transcribe(sid, b"x"), lambda: bot.read_id(sid, b"x")):
+        try:
+            call()
+            raise AssertionError("should be secure-only")
+        except PermissionError:
+            pass
+
+    sid, _ = bot.new_session("secure")
+    assert bot.transcribe(sid, b"wav") == "I am 30 and live in 560002"
+    msg, filled = bot.read_id(sid, b"img")
+    app = bot.state(sid)["application"]
+    assert filled == ["Age", "Name", "Pincode"] and app["Name"] == "Ravi Kumar" and app["Pincode"] == "560038"
+    assert isinstance(app["Age"], int) and app["Age"] >= 30
+    assert "ID card" in msg["content"] and msg["form"]["title"] == "Your contact details"   # email/phone still needed
+
+    # Not an ID -> nothing applied, polite message, conversation continues.
+    llm.read_id = lambda img: {"is_id_document": False, "full_name": "", "date_of_birth": "", "pincode": ""}
+    msg, filled = bot.read_id(sid, b"cat.jpg")
+    assert filled == [] and "doesn't look like an ID" in msg["content"]
+    assert bot.state(sid)["messages"][-1] == msg
+
+
+
+def test_vehicle_match():
+    from chat.fields import vehicle_models
+    from chat.vehicles import match
+    names = vehicle_models() or ["JUPITER BSVI - AOL", "JUPITER BSVI BASIC", "JUPITER 125 BSVI - DISC",
+                                 "APACHE RTR 160 2V BSVI DRUM", "APACHE RTR 160 4V BSVI DISC"]
+    cases = {"Jupiter BS6 Basic": "JUPITER BSVI BASIC", "jupiter basic model": "JUPITER BSVI BASIC",
+             "JUPITER BSVI BASIC": "JUPITER BSVI BASIC", "TVS Jupiter 125 disc": "JUPITER 125 BSVI - DISC",
+             "Apache RTR160 2V drum": "APACHE RTR 160 2V BSVI DRUM", "apache rtr 160 4v disc": "APACHE RTR 160 4V BSVI DISC"}
+    for q, want in cases.items():
+        assert match(q, names) == want, (q, match(q, names))
+    assert match("jupitor", names).startswith("JUPITER")          # typo, still the right family
+    assert match("Honda Activa", names) is None                    # unknown make -> kept as typed by the validator
+
+
+
+def test_local_model_robustness():
+    """Regressions from a most-secure-mode run where one message held every answer but nothing was captured."""
+    from chat.fields import _number
+    from chat.llm import parse_extraction
+    from chat.pii import PIISafeLLM, Redactor
+    # Gemma (Ollama JSON mode) wrote correct fields, then whitespace until the token cap -> salvage "fields".
+    broken = '{"fields": {"Name": "[NAME_1]", "Age": "22", "Employment_Type": "SAL", "Net_salary": null}\n,\n "confirmation": "no"' + "\n " * 300
+    ex = parse_extraction(broken)
+    assert (ex.fields.Name, ex.fields.Age, ex.fields.Employment_Type) == ("[NAME_1]", "22", "SAL")
+    assert parse_extraction("```json\n{\"fields\": {\"Age\": 30}, \"confirmation\": \"yes\"}\n```").confirmation == "yes"
+    # Indian amounts as people say them.
+    for text, want in {"1 lakh 50 thousand": 150000, "one lakh fifty thousand": 150000, "1.5 lakh": 150000,
+                       "₹1,50,000/-": 150000, "Rs. 2 lakh only": 200000, "150k": 150000, "twenty two": 22}.items():
+        assert _number(text) == want, (text, _number(text))
+    assert _number("35 40") is None and _number("abc") is None
+    # Model left the contact fields empty although the applicant gave them -> filled from the redactor's own mapping.
+    llm = FakeLLM([({"Age": "22"}, "none", [])])
+    ex = PIISafeLLM(llm, {}).extract("Applicant: My name is Jay, email jay@test.com, mobile 9876543210, age 22",
+                                     {}, ["Name", "Email", "Phone", "Age"])
+    assert (ex.fields.Name, ex.fields.Email, ex.fields.Phone) == ("Jay", "jay@test.com", "9876543210")
+    assert "jay@test.com" not in llm.prompts[0] and "Jay" not in llm.prompts[0]
+    assert Redactor().redact("Hi I'm Jay, I'm 22 and salaried") == "Hi I'm [NAME_1], I'm 22 and salaried"
+
+
 if __name__ == "__main__":
     test_form_flow(pathlib.Path(tempfile.mkdtemp()))
     test_free_text_flow(pathlib.Path(tempfile.mkdtemp()))
     test_trained_model_flow(pathlib.Path(tempfile.mkdtemp()))
     test_pii_redactor()
+    test_secure_voice_and_id(pathlib.Path(tempfile.mkdtemp()))
+    test_vehicle_match()
+    test_local_model_robustness()
     print("ok")

@@ -114,13 +114,16 @@ class LoanScorerModel:
     the project's own inference API `src/loan_model/predict.py::LoanScorer`, so the
     chatbot uses exactly the same cleaning, feature engineering and threshold as
     training and hold-out scoring."""
-    name = "loan-decision-hgb"
+    _SHORT = {"HistGradientBoostingClassifier": "hgb", "LGBMClassifier": "lgbm",
+              "XGBClassifier": "xgb", "RandomForestClassifier": "rf", "LogisticRegression": "logreg"}
 
     def __init__(self, path: str | None = None):
         from loan_model.predict import LoanScorer   # src/ is on sys.path (see config.py)
 
         self.scorer = LoanScorer(path) if path else LoanScorer()
         art = self.scorer.artifact
+        clf = type(art.pipeline.steps[-1][1]).__name__
+        self.name = f"loan-decision-{self._SHORT.get(clf, clf.lower())}"
         self.required_fields = list(art.raw_input_fields)
         self.version = str(art.metadata.get("trained_at", "unknown"))
         if config.DECISION_THRESHOLD_OVERRIDE is not None:       # optional business override

@@ -141,7 +141,8 @@ def test_trained_model_flow(tmp_path):
     from chat.ml_model import load_model
     config.AUDIT_LOG = pathlib.Path(tmp_path) / "audit.jsonl"
     llm = FakeLLM()
-    bot = LoanChatbot(llm=llm, model=load_model("trained"))
+    model = load_model("trained")
+    bot = LoanChatbot(llm=llm, model=model)
     assert bot.n_questions == 10 and bot.n_steps == 3
     results = {}
     for price in ("100000", "84000"):           # LTV 80% vs 95%
@@ -157,12 +158,12 @@ def test_trained_model_flow(tmp_path):
         assert m["form"]["type"] == "review"
         bot.send(sid, action="submit")
         out = bot.state(sid)["model_output"]
-        assert not out["is_placeholder"] and out["threshold"] == 0.09
+        assert not out["is_placeholder"] and out["threshold"] == model.threshold
         results[price] = out["decision"]
     assert results == {"100000": "APPROVED", "84000": "DECLINED"}
     assert llm.calls == 0                        # form path needs no LLM at all
     log = config.AUDIT_LOG.read_text()
-    assert "560002" not in log and '"model": "loan-decision-hgb"' in log
+    assert "560002" not in log and f'"model": "{model.name}"' in log
 
 
 def test_pii_redactor():

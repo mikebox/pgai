@@ -1,11 +1,14 @@
 {
-  "model": "HistGradientBoostingClassifier",
+  "model": "LGBMClassifier",
+  "model_family": "LightGBM",
   "hyperparameters": {
-    "l2_regularization": 0.2091498132903561,
-    "learning_rate": 0.025575311242654015,
-    "max_features": 0.5,
-    "max_leaf_nodes": 15,
-    "min_samples_leaf": 74
+    "colsample_bytree": 0.5993578407670862,
+    "learning_rate": 0.010127963257331486,
+    "min_child_samples": 178,
+    "n_estimators": 798,
+    "num_leaves": 24,
+    "reg_lambda": 4.333304126829626,
+    "subsample": 0.9160702162124823
   },
   "feature_spec": {
     "numeric": [
@@ -31,32 +34,32 @@
     ]
   },
   "positive_class": "DECLINED",
-  "decision_rule": "DECLINED if P(DECLINED) >= 0.09",
+  "decision_rule": "DECLINED if P(DECLINED) >= 0.095",
   "cost_assumption": {
     "cost_fn_risky_approved": 10.0,
     "cost_fp_good_declined": 1.0
   },
   "trained_on_rows": 108409,
   "sklearn_version": "1.9.1",
-  "trained_at": "2026-11-17T23:02:51",
+  "trained_at": "2026-11-19T23:00:18",
   "metrics": {
     "internal_test_ranking": {
-      "ROC-AUC": 0.7858,
-      "PR-AUC": 0.1835,
-      "Brier": 0.0463,
+      "ROC-AUC": 0.789,
+      "PR-AUC": 0.1893,
+      "Brier": 0.0461,
       "PR-AUC of random model": 0.0526
     },
     "internal_test_at_threshold": {
-      "threshold": 0.09,
-      "accuracy": 0.8243,
-      "precision_DECLINED": 0.1509,
-      "recall_DECLINED": 0.5061,
-      "f1_DECLINED": 0.2325,
-      "precision_APPROVED": 0.9685,
-      "recall_APPROVED": 0.842,
-      "f1_APPROVED": 0.9008,
-      "balanced_accuracy": 0.6741,
-      "decline_rate": 0.1763
+      "threshold": 0.095,
+      "accuracy": 0.8335,
+      "precision_DECLINED": 0.1564,
+      "recall_DECLINED": 0.493,
+      "f1_DECLINED": 0.2374,
+      "precision_APPROVED": 0.968,
+      "recall_APPROVED": 0.8524,
+      "f1_APPROVED": 0.9065,
+      "balanced_accuracy": 0.6727,
+      "decline_rate": 0.1658
     },
     "internal_test_confusion_matrix": {
       "labels": [
@@ -65,12 +68,12 @@
       ],
       "matrix": [
         [
-          17296,
-          3246
+          17510,
+          3032
         ],
         [
-          563,
-          577
+          578,
+          562
         ]
       ]
     },
@@ -81,7 +84,7 @@
         "ROC-AUC sd": 0.0,
         "PR-AUC": 0.0526,
         "Brier": 0.0526,
-        "fit s/fold": 0.0236
+        "fit s/fold": 0.0109
       },
       {
         "model": "Logistic regression (one-hot + target enc.)",
@@ -89,7 +92,7 @@
         "ROC-AUC sd": 0.0074,
         "PR-AUC": 0.1749,
         "Brier": 0.0465,
-        "fit s/fold": 2.1511
+        "fit s/fold": 0.8638
       },
       {
         "model": "Logistic regression, class_weight=balanced",
@@ -97,7 +100,7 @@
         "ROC-AUC sd": 0.0069,
         "PR-AUC": 0.1703,
         "Brier": 0.1981,
-        "fit s/fold": 2.1457
+        "fit s/fold": 0.9814
       },
       {
         "model": "HistGradientBoosting (default params)",
@@ -105,25 +108,119 @@
         "ROC-AUC sd": 0.0074,
         "PR-AUC": 0.1755,
         "Brier": 0.0465,
-        "fit s/fold": 4.4595
+        "fit s/fold": 1.3831
+      },
+      {
+        "model": "Random forest (default params)",
+        "ROC-AUC": 0.7784,
+        "ROC-AUC sd": 0.0073,
+        "PR-AUC": 0.1739,
+        "Brier": 0.0466,
+        "fit s/fold": 6.6438
+      },
+      {
+        "model": "XGBoost (default params)",
+        "ROC-AUC": 0.7837,
+        "ROC-AUC sd": 0.0078,
+        "PR-AUC": 0.179,
+        "Brier": 0.0464,
+        "fit s/fold": 2.2519
+      },
+      {
+        "model": "LightGBM (default params)",
+        "ROC-AUC": 0.7812,
+        "ROC-AUC sd": 0.0078,
+        "PR-AUC": 0.1739,
+        "Brier": 0.0466,
+        "fit s/fold": 4.125
       },
       {
         "model": "HistGradientBoosting (tuned)",
         "ROC-AUC": 0.7843,
         "ROC-AUC sd": 0.0071,
         "PR-AUC": 0.1787,
-        "Brier": NaN,
-        "fit s/fold": 6.2692
+        "Brier": 0.0464,
+        "fit s/fold": 1.9343
+      },
+      {
+        "model": "Random forest (tuned)",
+        "ROC-AUC": 0.7781,
+        "ROC-AUC sd": 0.0073,
+        "PR-AUC": 0.1737,
+        "Brier": 0.0466,
+        "fit s/fold": 4.2955
+      },
+      {
+        "model": "XGBoost (tuned)",
+        "ROC-AUC": 0.7853,
+        "ROC-AUC sd": 0.0075,
+        "PR-AUC": 0.1802,
+        "Brier": 0.0463,
+        "fit s/fold": 1.7688
+      },
+      {
+        "model": "LightGBM (tuned)",
+        "ROC-AUC": 0.7865,
+        "ROC-AUC sd": 0.0075,
+        "PR-AUC": 0.1802,
+        "Brier": 0.0463,
+        "fit s/fold": 5.2944
+      }
+    ],
+    "internal_test_model_comparison": [
+      {
+        "model": "XGBoost (tuned)",
+        "ROC-AUC": 0.7893,
+        "PR-AUC": 0.1865,
+        "Brier": 0.0462,
+        "recall DECLINED @0.095": 0.5018,
+        "precision DECLINED @0.095": 0.1596,
+        "decline rate": 0.1653,
+        "fit s": 2.4099,
+        "1-row predict ms": 16.9652
+      },
+      {
+        "model": "LightGBM (tuned)",
+        "ROC-AUC": 0.789,
+        "PR-AUC": 0.1893,
+        "Brier": 0.0461,
+        "recall DECLINED @0.095": 0.493,
+        "precision DECLINED @0.095": 0.1564,
+        "decline rate": 0.1658,
+        "fit s": 6.8241,
+        "1-row predict ms": 20.0113
+      },
+      {
+        "model": "HistGradientBoosting (tuned)",
+        "ROC-AUC": 0.7858,
+        "PR-AUC": 0.1835,
+        "Brier": 0.0463,
+        "recall DECLINED @0.095": 0.4798,
+        "precision DECLINED @0.095": 0.1539,
+        "decline rate": 0.164,
+        "fit s": 2.4558,
+        "1-row predict ms": 44.1135
+      },
+      {
+        "model": "Random forest (tuned)",
+        "ROC-AUC": 0.7809,
+        "PR-AUC": 0.1792,
+        "Brier": 0.0464,
+        "recall DECLINED @0.095": 0.5193,
+        "precision DECLINED @0.095": 0.1563,
+        "decline rate": 0.1747,
+        "fit s": 6.8294,
+        "1-row predict ms": 55.8843
       }
     ],
     "latency_ms": {
-      "p50_ms": 71.81,
-      "p95_ms": 118.65,
-      "p99_ms": 220.07,
-      "max_ms": 327.15
+      "p50_ms": 11.09,
+      "p95_ms": 12.67,
+      "p99_ms": 14.12,
+      "max_ms": 15.4
     }
   },
-  "threshold": 0.09,
+  "threshold": 0.095,
   "raw_input_fields": [
     "Pincode",
     "Age",

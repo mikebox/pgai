@@ -39,7 +39,7 @@ python -m chat.tests.test_flow      # offline test with a fake LLM
 
 ## The ML model
 
-By default (`LOAN_MODEL=auto`) the chat uses the trained model in `models/loan_decision_model.joblib`. It is a HistGradientBoosting classifier, and the chat calls it through `src/loan_model/predict.py` (`LoanScorer`), so cleaning, feature engineering and the **0.09 threshold** are exactly those used in training and hold-out scoring. The questions are driven by the model's `raw_input_fields`. The log records the inputs, the engineered features, P(DECLINED), the decision and the latency for every application.
+By default (`LOAN_MODEL=auto`) the chat uses the trained model in `models/loan_decision_model.joblib`. It is the best model from `notebooks/03` (currently a tuned LightGBM classifier), and the chat calls it through `src/loan_model/predict.py` (`LoanScorer`), so cleaning, feature engineering and the threshold stored in the artifact (currently **0.095**) are exactly those used in training and hold-out scoring. The questions are driven by the model's `raw_input_fields`. The log records the inputs, the engineered features, P(DECLINED), the decision and the latency for every application.
 
 ## Plugging in a different model
 

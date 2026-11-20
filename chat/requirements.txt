@@ -5,3 +5,5 @@ python-dotenv>=1.2
 langsmith>=0.15
 pandas
 scikit-learn
+lightgbm
+xgboost

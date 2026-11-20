@@ -8,8 +8,9 @@ from dataclasses import dataclass, field
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
@@ -62,8 +63,81 @@ DEFAULT_HGB_PARAMS = dict(
 )
 
 
+DEFAULT_RF_PARAMS = dict(
+    n_estimators=500, max_features="sqrt", min_samples_leaf=50, n_jobs=-1, random_state=C.RANDOM_STATE,
+)
+
+DEFAULT_XGB_PARAMS = dict(
+    n_estimators=600, learning_rate=0.03, max_depth=4, min_child_weight=10, subsample=0.8,
+    colsample_bytree=0.8, reg_lambda=1.0, tree_method="hist", enable_categorical=True,
+    max_cat_to_onehot=1, eval_metric="logloss", n_jobs=-1, random_state=C.RANDOM_STATE,
+)
+
+DEFAULT_LGBM_PARAMS = dict(
+    n_estimators=600, learning_rate=0.03, num_leaves=31, min_child_samples=100, subsample=0.8,
+    subsample_freq=1, colsample_bytree=0.8, reg_lambda=1.0, min_data_per_group=50, cat_smooth=10,
+    n_jobs=-1, random_state=C.RANDOM_STATE, verbose=-1,
+)
+
+MODEL_NAMES = ("logreg", "hgb", "rf", "xgb", "lgbm")
+
+
+class ToCategorical(BaseEstimator, TransformerMixin):
+    """Cast ordinal-encoded columns to pandas `category` with levels frozen at fit time.
+
+    XGBoost (`enable_categorical`) and LightGBM pick up `category` columns as native
+    categoricals. Freezing the levels keeps train and scoring frames consistent;
+    unseen codes become NaN (treated as missing by both libraries).
+    """
+
+    def __init__(self, columns=()):
+        self.columns = columns
+
+    def fit(self, X: pd.DataFrame, y=None):
+        # Ordinal codes arrive as floats; XGBoost wants integer category levels.
+        self.categories_ = {c: sorted(int(v) for v in pd.unique(X[c].dropna())) for c in self.columns}
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        X = X.copy()
+        for c, cats in self.categories_.items():
+            X[c] = pd.Categorical(pd.to_numeric(X[c]).round().astype("Int64"), categories=cats)
+        return X
+
+
+def _tree_encoder(spec: FeatureSpec) -> ColumnTransformer:
+    """Numeric passthrough + ordinal codes for low-card + cross-fitted target encoding for high-card."""
+    return ColumnTransformer(
+        [("num", "passthrough", spec.numeric),
+         ("low", OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1,
+                                encoded_missing_value=-1, min_frequency=20), spec.low_card),
+         ("high", TargetEncoder(target_type="binary", random_state=C.RANDOM_STATE), spec.high_card)],
+        verbose_feature_names_out=False,
+    )
+
+
 def build_pipeline(spec: FeatureSpec = FINAL_SPEC, model: str = "hgb", **params) -> Pipeline:
+    """Feature engineering + encoding + classifier.
+
+    model: "logreg" | "hgb" (HistGradientBoosting) | "rf" (RandomForest) |
+           "xgb" (XGBoost) | "lgbm" (LightGBM).
+    """
     n_num, n_low = len(spec.numeric), len(spec.low_card)
+    if model == "rf":
+        # RF has no native categoricals: low-card ordinal codes are used as numbers (fine for trees).
+        clf = RandomForestClassifier(**{**DEFAULT_RF_PARAMS, **params})
+        return Pipeline([("features", FeatureBuilder()), ("encode", _tree_encoder(spec)), ("clf", clf)])
+    if model in ("xgb", "lgbm"):
+        # Imported lazily so the chatbot / scoring code only needs these packages if that model is deployed.
+        if model == "xgb":
+            from xgboost import XGBClassifier
+            clf = XGBClassifier(**{**DEFAULT_XGB_PARAMS, **params})
+        else:
+            from lightgbm import LGBMClassifier
+            clf = LGBMClassifier(**{**DEFAULT_LGBM_PARAMS, **params})
+        enc = _tree_encoder(spec).set_output(transform="pandas")
+        return Pipeline([("features", FeatureBuilder()), ("encode", enc),
+                         ("cat", ToCategorical(spec.low_card)), ("clf", clf)])
     if model == "hgb":
         ct = ColumnTransformer(
             [("num", "passthrough", spec.numeric),
